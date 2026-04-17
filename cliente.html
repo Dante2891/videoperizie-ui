@@ -147,27 +147,19 @@ async function avviaWebRTC() {
 }
 
 function scattaFoto() {
-  const videoTrack = localStream.getVideoTracks()[0];
-  const imageCapture = new ImageCapture(videoTrack);
-  
-  imageCapture.takePhoto({ imageWidth: 1920, imageHeight: 1080 })
-    .then(blob => {
-      blob.arrayBuffer().then(buffer => {
-        socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)) });
-      });
-    })
-    .catch(() => {
-      // Fallback: cattura da canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = videoLocale.videoWidth;
-      canvas.height = videoLocale.videoHeight;
-      canvas.getContext('2d').drawImage(videoLocale, 0, 0);
-      canvas.toBlob(blob => {
-        blob.arrayBuffer().then(buffer => {
-          socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)) });
-        });
-      }, 'image/jpeg', 0.95);
+  const canvas = document.createElement('canvas');
+  const MAX = 1280;
+  let w = videoLocale.videoWidth;
+  let h = videoLocale.videoHeight;
+  if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(videoLocale, 0, 0, w, h);
+  canvas.toBlob(blob => {
+    blob.arrayBuffer().then(buffer => {
+      socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)) });
     });
+  }, 'image/jpeg', 0.7);
 }
 
 function mostraNotifica() {
