@@ -357,6 +357,22 @@ if (!token) {
   statoAvvio.textContent = 'Link non valido. Contatta l\'operatore.';
   statoAvvio.className = 'errore';
   btnAvvia.disabled = true;
+} else {
+  // Verifica stato perizia
+  fetch(`${SERVER}/perizie/check/${token}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.valido) {
+        const msg = data.motivo === 'completata' ? 'Perizia terminata.' : 
+                    data.motivo === 'scaduta' ? 'Link scaduto. Contatta l\'operatore.' :
+                    'Link non valido.';
+        statoAvvio.textContent = msg;
+        statoAvvio.className = 'errore';
+        btnAvvia.disabled = true;
+      } else if (data.stato === 'creata') {
+        statoAvvio.textContent = 'In attesa dell\'operatore...';
+      }
+    });
 }
 
 let socket, pc, localStream;
@@ -411,6 +427,13 @@ function collegaSocket() {
 
   socket.on('peer-disconnesso', () => {
     istruzione.textContent = '⚠️ Operatore disconnesso';
+  });
+  socket.on('sessione-terminata', () => {
+    schermataSessione.style.display = 'none';
+    schermataAvvio.style.display = 'flex';
+    statoAvvio.textContent = 'Perizia terminata. Grazie!';
+    statoAvvio.className = '';
+    btnAvvia.disabled = true;
   });
 
   socket.on('errore', (msg) => {
