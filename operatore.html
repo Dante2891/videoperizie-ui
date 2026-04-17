@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Videoperizie - Operatore</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; height: 100vh; display: flex; flex-direction: column; }
+header { background: #16213e; padding: 15px 20px; display: flex; align-items: center; gap: 15px; }
+header h1 { font-size: 1.2rem; }
+#stato { padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; background: #333; }
+#stato.connesso { background: #27ae60; }
+#stato.attesa { background: #e67e22; }
+#stato.errore { background: #e74c3c; }
+main { display: flex; flex: 1; gap: 15px; padding: 15px; overflow: hidden; }
+#video-container { flex: 1; background: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; }
+video { width: 100%; height: 100%; object-fit: contain; border-radius: 10px; }
+#placeholder { color: #555; font-size: 1.1rem; }
+#pannello { width: 320px; display: flex; flex-direction: column; gap: 10px; }
+.card { background: #16213e; border-radius: 10px; padding: 15px; }
+.card h3 { font-size: 0.9rem; color: #aaa; margin-bottom: 10px; }
+#link-box { background: #0f3460; border-radius: 8px; padding: 10px; font-size: 0.8rem; word-break: break-all; color: #4cc9f0; margin-bottom: 8px; min-height: 40px; }
+button { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: bold; margin-top: 5px; transition: opacity 0.2s; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+#btn-nuova { background: #4361ee; color: #fff; }
+#btn-copia { background: #3a86ff; color: #fff; }
+#btn-foto { background: #e63946; color: #fff; font-size: 1.1rem; padding: 18px; }
+#btn-cartella { background: #2d6a4f; color: #fff; }
+#foto-list { flex: 1; overflow-y: auto; }
+.foto-item { background: #0f3460; border-radius: 8px; padding: 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.foto-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 5px; }
+.foto-info { font-size: 0.8rem; color: #aaa; }
+#log { background: #0d0d0d; border-radius: 8px; padding: 10px; font-size: 0.75rem; color: #4cc9f0; height: 100px; overflow-y: auto; font-family: monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📹 Videoperizie — Operatore</h1>
+  <span id="stato">Disconnesso</span>
+</header>
+<main>
+  <div id="video-container">
+    <video id="video-remoto" autoplay playsinline></video>
+    <div id="placeholder">In attesa del cliente...</div>
+  </div>
+  <div id="pannello">
+    <div class="card">
+      <h3>SESSIONE</h3>
+      <div id="link-box">Clicca "Nuova Sessione" per iniziare</div>
+      <button id="btn-nuova">+ Nuova Sessione</button>
+      <button id="btn-copia" disabled>📋 Copia Link Cliente</button>
+    </div>
+    <div class="card">
+      <h3>CONTROLLI</h3>
+      <button id="btn-foto" disabled>📸 SCATTA FOTO</button>
+      <button id="btn-cartella">📁 Seleziona Cartella Salvataggio</button>
+    </div>
+    <div class="card foto-list">
+      <h3>FOTO SCATTATE (<span id="foto-count">0</span>)</h3>
+      <div id="foto-list"></div>
+    </div>
+    <div class="card">
+      <h3>LOG</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const SERVER = 'https://videoperizie-server-production.up.railway.app';
+const BASE_URL = window.location.origin;
+
+let socket, pc, token, cartella, fotoCount = 0;
+let localStream;
+
+const statoEl = document.getElementById('stato');
+const linkBox = document.getElementById('link-box');
+const videoRemoto = document.getElementById('video-remoto');
+const placeholder = document.getElementById('placeholder');
+const btnNuova = document.getElementById('btn-nuova');
+const btnCopia = document.getElementById('btn-copia');
+const btnFoto = document.getElementById('btn-foto');
+const btnCartella = document.getElementById('btn-cartella');
+const fotoList = document.getElementById('foto-list');
+const fotoCount_el = document.getElementById('foto-count');
+const logEl = document.getElementById('log');
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString();
+  logEl.innerHTML += `[${t}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function setStato(s, classe) {
+  statoEl.textContent = s;
+  statoEl.className = classe;
+}
+
+btnCartella.addEventListener('click', async () => {
+  try {
+    cartella = await window.showDirectoryPicker();
+    log(`Cartella: ${cartella.name}`);
+  } catch(e) { log('Selezione cartella annullata'); }
+});
+
+btnNuova.addEventListener('click', async () => {
+  const res = await fetch(`${SERVER}/sessione`, { method: 'POST' });
+  const data = await res.json();
+  token = data.token;
+  const link = `${BASE_URL}/cliente.html?token=${token}`;
+  linkBox.textContent = link;
+  btnCopia.disabled = false;
+  log(`Sessione creata: ${token}`);
+  collegaSocket();
+});
+
+btnCopia.addEventListener('click', () => {
+  const link = linkBox.textContent;
+  navigator.clipboard.writeText(link);
+  log('Link copiato!');
+});
+
+btnFoto.addEventListener('click', () => {
+  if (socket && token) {
+    socket.emit('scatta-foto', { token });
+    log('Comando foto inviato');
+  }
+});
+
+function collegaSocket() {
+  socket = io(SERVER);
+  setStato('Connessione...', 'attesa');
+
+  socket.on('connect', () => {
+    socket.emit('join-operatore', { token });
+    setStato('In attesa cliente', 'attesa');
+    log('Socket connesso, attendo cliente...');
+  });
+
+  socket.on('cliente-connesso', async () => {
+    setStato('Cliente connesso', 'connesso');
+    log('Cliente connesso! Avvio WebRTC...');
+    btnFoto.disabled = false;
+    await avviaWebRTC();
+  });
+
+  socket.on('segnale', async ({ data }) => {
+    if (!pc) return;
+    if (data.type === 'answer') {
+      await pc.setRemoteDescription(data);
+    } else if (data.candidate) {
+      await pc.addIceCandidate(data);
+    }
+  });
+
+  socket.on('foto', async ({ blob }) => {
+    log('Foto ricevuta!');
+    await salvaFoto(blob);
+  });
+
+  socket.on('peer-disconnesso', () => {
+    setStato('Cliente disconnesso', 'errore');
+    btnFoto.disabled = true;
+    placeholder.style.display = 'flex';
+    log('Cliente disconnesso');
+  });
+}
+
+async function avviaWebRTC() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch(e) {
+    log('Nessun microfono rilevato, solo video');
+  }
+
+  pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  });
+
+  if (localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+
+  pc.ontrack = (e) => {
+    videoRemoto.srcObject = e.streams[0];
+    placeholder.style.display = 'none';
+    log('Video remoto ricevuto');
+  };
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) socket.emit('segnale', { token, data: e.candidate });
+  };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit('segnale', { token, data: offer });
+  log('Offer WebRTC inviato');
+}
+
+async function salvaFoto(blobData) {
+  fotoCount++;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const nomeFile = `foto_${String(fotoCount).padStart(3,'0')}_${timestamp}.jpg`;
+  
+  const byteArr = new Uint8Array(blobData);
+  const blob = new Blob([byteArr], { type: 'image/jpeg' });
+  const url = URL.createObjectURL(blob);
+
+  // Aggiunge anteprima
+  const item = document.createElement('div');
+  item.className = 'foto-item';
+  item.innerHTML = `<img src="${url}"><div class="foto-info">${nomeFile}<br>${new Date().toLocaleTimeString()}</div>`;
+  fotoList.prepend(item);
+  fotoCount_el.textContent = fotoCount;
+
+  // Salva in cartella se selezionata
+  if (cartella) {
+    try {
+      const fileHandle = await cartella.getFileHandle(nomeFile, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      log(`Salvata: ${nomeFile}`);
+    } catch(e) { log(`Errore salvataggio: ${e.message}`); }
+  } else {
+    // Fallback: download automatico
+    const a = document.createElement('a');
+    a.href = url; a.download = nomeFile; a.click();
+    log(`Download: ${nomeFile} (seleziona cartella per salvataggio automatico)`);
+  }
+}
+</script>
+</body>
+</html>
