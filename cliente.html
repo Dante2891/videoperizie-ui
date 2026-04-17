@@ -142,7 +142,11 @@ async function avviaWebRTC() {
   };
 
   pc.ontrack = (e) => {
-    // audio operatore
+    if (e.streams && e.streams[0]) {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play().catch(err => console.log('Audio error: ' + err));
+    }
   };
 }
 
