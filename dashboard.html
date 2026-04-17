@@ -85,10 +85,10 @@ main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
 .stat-card {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 20px;
+  border-radius: 12px; padding: 24px 28px;
 }
 .stat-label { font-size: 0.72rem; font-family: var(--font-head); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-.stat-value { font-family: var(--font-head); font-size: 2rem; font-weight: 800; }
+.stat-value { font-family: 'DM Sans', sans-serif; font-size: 2.2rem; font-weight: 700; }
 .stat-value.green { color: var(--green); }
 .stat-value.blue { color: var(--accent2); }
 .stat-value.orange { color: var(--orange); }
@@ -203,6 +203,19 @@ input:focus { border-color: var(--accent); }
 }
 .btn-crea:hover { background: var(--accent2); }
 .btn-crea:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-termina-dash {
+  background: rgba(16,185,129,0.1); color: var(--green);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 6px; padding: 6px 10px;
+  cursor: pointer; font-size: 0.78rem;
+  font-family: var(--font-body); font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-termina-dash:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-termina-dash:not(:disabled):hover { background: rgba(16,185,129,0.2); }
+
+
 </style>
 </head>
 <body>
@@ -316,6 +329,12 @@ async function caricaPerizie() {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.status === 401) { localStorage.clear(); window.location.href = 'index.html'; return; }
+	if (res.status === 403) {
+	  alert('Account sospeso. Contatta il supporto.');
+	  localStorage.clear();
+	  window.location.href = 'index.html';
+	  return;
+	}
     tuttePerizie = await res.json();
     aggiornaStat();
     renderPerizie(tuttePerizie);
@@ -349,7 +368,7 @@ function renderPerizie(perizie) {
       <td style="text-align:center">${p.num_foto || 0}</td>
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
-        <a href="${waLink}" target="_blank" class="btn-wa">📲 WA</a>
+        <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
         <button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}')">▶ Avvia</button>
       </td>
     </tr>`;
@@ -419,6 +438,17 @@ function avviaPerizia(tokenSessione, perizia_id, telefono, nome) {
 }
 
 caricaPerizie();
+
+async function terminaPerizia(id) {
+  if (!confirm('Terminare questa perizia?')) return;
+  await fetch(`${SERVER}/perizie/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ stato: 'completata' })
+  });
+  await caricaPerizie();
+}
+
 </script>
 </body>
 </html>
