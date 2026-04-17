@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Videoperizia</title>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+#schermata-avvio, #schermata-sessione { width: 100%; max-width: 480px; text-align: center; }
+#schermata-sessione { display: none; }
+.logo { font-size: 3rem; margin-bottom: 15px; }
+h1 { font-size: 1.4rem; margin-bottom: 10px; }
+p { color: #aaa; font-size: 0.95rem; margin-bottom: 25px; line-height: 1.5; }
+#btn-avvia { background: #4361ee; color: #fff; border: none; border-radius: 12px; padding: 18px 40px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; }
+#btn-avvia:disabled { opacity: 0.4; }
+#stato { margin-top: 15px; padding: 10px; border-radius: 8px; font-size: 0.9rem; background: #333; }
+#stato.connesso { background: #27ae60; }
+#stato.errore { background: #e74c3c; }
+video { width: 100%; border-radius: 12px; background: #000; margin-bottom: 15px; max-height: 40vh; object-fit: cover; }
+#notifica-foto { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e63946; color: #fff; padding: 12px 25px; border-radius: 25px; font-weight: bold; font-size: 1rem; animation: pulse 0.5s ease; }
+@keyframes pulse { 0% { transform: translateX(-50%) scale(0.8); } 100% { transform: translateX(-50%) scale(1); } }
+#istruzioni { background: #16213e; border-radius: 10px; padding: 15px; text-align: left; font-size: 0.85rem; color: #aaa; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div id="schermata-avvio">
+  <div class="logo">📱</div>
+  <h1>Videoperizia</h1>
+  <p>Consenti l'accesso alla fotocamera e al microfono per avviare la perizia con l'operatore.</p>
+  <div id="istruzioni">
+    ✅ Tieni il telefono fermo<br>
+    ✅ Inquadra ciò che ti viene chiesto<br>
+    ✅ Le foto vengono scattate dall'operatore<br>
+    ✅ Non chiudere questa pagina
+  </div>
+  <br>
+  <button id="btn-avvia">📹 Avvia Videoperizia</button>
+  <div id="stato">Pronto</div>
+</div>
+
+<div id="schermata-sessione">
+  <video id="video-locale" autoplay playsinline muted></video>
+  <div id="stato-sessione" class="connesso">🟢 Connesso con l'operatore</div>
+</div>
+
+<div id="notifica-foto">📸 FOTO SCATTATA!</div>
+
+<script>
+const SERVER = 'https://videoperizie-server-production.up.railway.app';
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+
+const btnAvvia = document.getElementById('btn-avvia');
+const statoEl = document.getElementById('stato');
+const schermataAvvio = document.getElementById('schermata-avvio');
+const schermataSessione = document.getElementById('schermata-sessione');
+const videoLocale = document.getElementById('video-locale');
+const notificaFoto = document.getElementById('notifica-foto');
+
+if (!token) {
+  statoEl.textContent = 'Link non valido. Contatta l\'operatore.';
+  statoEl.className = 'errore';
+  btnAvvia.disabled = true;
+}
+
+let socket, pc, localStream;
+
+btnAvvia.addEventListener('click', async () => {
+  btnAvvia.disabled = true;
+  statoEl.textContent = 'Accesso fotocamera...';
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: true
+    });
+    videoLocale.srcObject = localStream;
+    statoEl.textContent = 'Connessione in corso...';
+    collegaSocket();
+  } catch(e) {
+    statoEl.textContent = 'Errore: consenti fotocamera e microfono';
+    statoEl.className = 'errore';
+    btnAvvia.disabled = false;
+  }
+});
+
+function collegaSocket() {
+  socket = io(SERVER);
+
+  socket.on('connect', () => {
+    socket.emit('join-cliente', { token });
+  });
+
+  socket.on('joined', () => {
+    schermataAvvio.style.display = 'none';
+    schermataSessione.style.display = 'block';
+  });
+
+  socket.on('segnale', async ({ data }) => {
+    if (!pc) await avviaWebRTC();
+    if (data.type === 'offer') {
+      await pc.setRemoteDescription(data);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('segnale', { token, data: answer });
+    } else if (data.candidate) {
+      await pc.addIceCandidate(data);
+    }
+  });
+
+  socket.on('scatta-foto', () => {
+    mostraNotifica();
+    scattaFoto();
+  });
+
+  socket.on('peer-disconnesso', () => {
+    document.getElementById('stato-sessione').textContent = '🔴 Operatore disconnesso';
+    document.getElementById('stato-sessione').className = 'errore';
+  });
+
+  socket.on('errore', (msg) => {
+    statoEl.textContent = msg;
+    statoEl.className = 'errore';
+  });
+}
+
+async function avviaWebRTC() {
+  pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  });
+
+  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+  pc.onicecandidate = (e) => {
+    if (e.candidate) socket.emit('segnale', { token, data: e.candidate });
+  };
+
+  pc.ontrack = (e) => {
+    // audio operatore
+  };
+}
+
+function scattaFoto() {
+  const videoTrack = localStream.getVideoTracks()[0];
+  const imageCapture = new ImageCapture(videoTrack);
+  
+  imageCapture.takePhoto({ imageWidth: 1920, imageHeight: 1080 })
+    .then(blob => {
+      blob.arrayBuffer().then(buffer => {
+        socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)) });
+      });
+    })
+    .catch(() => {
+      // Fallback: cattura da canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = videoLocale.videoWidth;
+      canvas.height = videoLocale.videoHeight;
+      canvas.getContext('2d').drawImage(videoLocale, 0, 0);
+      canvas.toBlob(blob => {
+        blob.arrayBuffer().then(buffer => {
+          socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)) });
+        });
+      }, 'image/jpeg', 0.95);
+    });
+}
+
+function mostraNotifica() {
+  notificaFoto.style.display = 'block';
+  setTimeout(() => { notificaFoto.style.display = 'none'; }, 2000);
+}
+</script>
+</body>
+</html>
