@@ -19,7 +19,7 @@
   --green: #10b981;
   --orange: #f59e0b;
   --text: #e2e8f0;
-  --muted: #64748b;
+  --muted: #94a3b8;
   --font-head: 'Syne', sans-serif;
   --font-body: 'DM Sans', sans-serif;
 }
@@ -283,7 +283,7 @@ main {
   letter-spacing: 0.05em;
   padding: 16px;
 }
-.btn-danger:not(:disabled):hover { background: #dc2626; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(239,68,68,0.3); }
+.btn-danger:not(:disabled):hover { background: #dc2626; transform: translateY(-1px); box-shadow: 0 4px 24px rgba(239,68,68,0.45); }
 .btn-green { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
 .btn-green:not(:disabled):hover { background: rgba(16,185,129,0.2); }
 
@@ -536,8 +536,7 @@ document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
 `);
 document.getElementById('btn-termina').addEventListener('click', async () => {
   await aggiornaStato('completata');
-  if (socket && token) socket.emit('termina-sessione', { token });
-  setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+  window.location.href = 'dashboard.html';
 });
 
 function flashEffect() {
