@@ -468,34 +468,34 @@ function scattaFoto() {
   ctx.drawImage(videoLocale, 0, 0, w, h);
 
   // Timestamp elegante
-	  const barH = Math.round(h * 0.12);
-	  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-	  ctx.fillRect(0, h - barH, w, barH);
+  const barH = Math.round(h * 0.12);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, h - barH, w, barH);
 
-	  const fontSize = Math.round(barH * 0.32);
-	  ctx.textBaseline = 'middle';
-	  ctx.fillStyle = '#ffffff';
-	  ctx.font = `bold ${fontSize}px monospace`;
-	  ctx.textAlign = 'left';
-	  ctx.fillText(testo, 14, h - barH * 0.7);
+  const fontSize = Math.round(barH * 0.32);
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${fontSize}px monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillText(testo, 14, h - barH * 0.7);
 
-	  if (gpsCoords) {
-		const gps = `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lon.toFixed(5)}`;
-		ctx.font = `${Math.round(fontSize * 0.85)}px monospace`;
-		ctx.fillStyle = 'rgba(255,255,255,0.75)';
-		ctx.fillText(gps, 14, h - barH * 0.28);
-	  }
+  if (gpsCoords) {
+    const gps = `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lon.toFixed(5)}`;
+    ctx.font = `${Math.round(fontSize * 0.85)}px monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(gps, 14, h - barH * 0.28);
+  }
 
-	  canvas.toBlob(blob => {
-		blob.arrayBuffer().then(buffer => {
-		  socket.emit('foto', { 
-			token, 
-			blob: Array.from(new Uint8Array(buffer)),
-			gps: gpsCoords
-		  });
-		});
-	  }, 'image/jpeg', 0.85);
-	}
+  canvas.toBlob(blob => {
+    blob.arrayBuffer().then(buffer => {
+      socket.emit('foto', { 
+        token, 
+        blob: Array.from(new Uint8Array(buffer)),
+        gps: gpsCoords
+      });
+    });
+  }, 'image/jpeg', 0.85);
+}
 
 function mostraNotifica() {
   notificaFoto.style.display = 'block';
