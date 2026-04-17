@@ -2,51 +2,342 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Videoperizia</title>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-#schermata-avvio, #schermata-sessione { width: 100%; max-width: 480px; text-align: center; }
-#schermata-sessione { display: none; }
-.logo { font-size: 3rem; margin-bottom: 15px; }
-h1 { font-size: 1.4rem; margin-bottom: 10px; }
-p { color: #aaa; font-size: 0.95rem; margin-bottom: 25px; line-height: 1.5; }
-#btn-avvia { background: #4361ee; color: #fff; border: none; border-radius: 12px; padding: 18px 40px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; }
+:root {
+  --bg: #080c14;
+  --surface: #0d1525;
+  --surface2: #111d33;
+  --border: rgba(99,179,237,0.12);
+  --accent: #3b82f6;
+  --accent2: #60a5fa;
+  --cyan: #22d3ee;
+  --red: #ef4444;
+  --green: #10b981;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* SCHERMATA AVVIO */
+#schermata-avvio {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--bg);
+  position: relative;
+}
+
+/* Background glow */
+#schermata-avvio::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.brand {
+  font-family: var(--font-head);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 40px;
+}
+
+.hero-icon {
+  width: 96px; height: 96px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--surface2), var(--surface));
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 42px;
+  margin: 0 auto 28px;
+  box-shadow: 0 20px 60px rgba(59,130,246,0.15);
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+h1 {
+  font-family: var(--font-head);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 36px;
+  max-width: 280px;
+}
+
+/* Steps */
+.steps {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 32px;
+  text-align: left;
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.step:last-child { border-bottom: none; padding-bottom: 0; }
+.step:first-child { padding-top: 0; }
+.step-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent2);
+  flex-shrink: 0;
+  font-family: var(--font-head);
+}
+.step-text {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+  padding-top: 3px;
+}
+
+#btn-avvia {
+  width: 100%;
+  max-width: 320px;
+  padding: 18px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 8px 30px rgba(59,130,246,0.3);
+}
+#btn-avvia:active { transform: scale(0.97); }
 #btn-avvia:disabled { opacity: 0.4; }
-#stato { margin-top: 15px; padding: 10px; border-radius: 8px; font-size: 0.9rem; background: #333; }
-#stato.connesso { background: #27ae60; }
-#stato.errore { background: #e74c3c; }
-video { width: 100%; border-radius: 12px; background: #000; margin-bottom: 15px; max-height: 40vh; object-fit: cover; }
-#notifica-foto { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e63946; color: #fff; padding: 12px 25px; border-radius: 25px; font-weight: bold; font-size: 1rem; animation: pulse 0.5s ease; }
-@keyframes pulse { 0% { transform: translateX(-50%) scale(0.8); } 100% { transform: translateX(-50%) scale(1); } }
-#istruzioni { background: #16213e; border-radius: 10px; padding: 15px; text-align: left; font-size: 0.85rem; color: #aaa; line-height: 1.8; }
+
+#stato-avvio {
+  margin-top: 16px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  min-height: 20px;
+}
+#stato-avvio.errore { color: var(--red); }
+
+/* SCHERMATA SESSIONE */
+#schermata-sessione {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+  position: relative;
+}
+
+video#video-locale {
+  flex: 1;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+
+.sessione-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Corner decorators */
+.corner {
+  position: absolute;
+  width: 24px; height: 24px;
+  border-color: rgba(99,179,237,0.5);
+  border-style: solid;
+}
+.corner-tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; }
+.corner-tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; }
+.corner-bl { bottom: 80px; left: 16px; border-width: 0 0 2px 2px; }
+.corner-br { bottom: 80px; right: 16px; border-width: 0 2px 2px 0; }
+
+/* Scan line */
+.scan-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.3;
+  animation: scan 5s linear infinite;
+}
+@keyframes scan { 0% { top: 0; } 100% { top: calc(100% - 80px); } }
+
+/* Status bar */
+#status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 16px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--green);
+  font-family: var(--font-head);
+  letter-spacing: 0.1em;
+}
+.live-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+/* Bottom bar */
+#bottom-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 16px 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  text-align: center;
+}
+#istruzione {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.6);
+  font-family: var(--font-head);
+  letter-spacing: 0.05em;
+}
+
+/* NOTIFICA FOTO */
+#notifica-foto {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: white;
+  z-index: 100;
+  animation: photoFlash 0.4s ease-out forwards;
+}
+@keyframes photoFlash {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+#notifica-testo {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 16px 28px;
+  font-family: var(--font-head);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  z-index: 101;
+  display: none;
+  letter-spacing: 0.05em;
+}
 </style>
 </head>
 <body>
 
+<!-- SCHERMATA AVVIO -->
 <div id="schermata-avvio">
-  <div class="logo">📱</div>
+  <div class="brand">Videoperizie</div>
+  <div class="hero-icon">📱</div>
   <h1>Videoperizia</h1>
-  <p>Consenti l'accesso alla fotocamera e al microfono per avviare la perizia con l'operatore.</p>
-  <div id="istruzioni">
-    ✅ Tieni il telefono fermo<br>
-    ✅ Inquadra ciò che ti viene chiesto<br>
-    ✅ Le foto vengono scattate dall'operatore<br>
-    ✅ Non chiudere questa pagina
+  <p class="subtitle">Consenti accesso alla fotocamera per collegarti con l'operatore.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Premi <strong>Avvia</strong> e consenti fotocamera e microfono</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Inquadra l'oggetto della perizia</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Le foto vengono scattate dall'operatore — tieni fermo il telefono</div>
+    </div>
   </div>
-  <br>
+
   <button id="btn-avvia">📹 Avvia Videoperizia</button>
-  <div id="stato">Pronto</div>
+  <div id="stato-avvio">Pronto</div>
 </div>
 
+<!-- SCHERMATA SESSIONE -->
 <div id="schermata-sessione">
   <video id="video-locale" autoplay playsinline muted></video>
-  <div id="stato-sessione" class="connesso">🟢 Connesso con l'operatore</div>
+  <div class="sessione-overlay">
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    <div class="scan-line"></div>
+    <div id="status-bar">
+      <div class="live-badge">LIVE</div>
+    </div>
+    <div id="bottom-bar">
+      <div id="istruzione">Tieni il telefono fermo 📷</div>
+    </div>
+  </div>
 </div>
 
-<div id="notifica-foto">📸 FOTO SCATTATA!</div>
+<!-- EFFETTI FOTO -->
+<div id="notifica-foto"></div>
+<div id="notifica-testo">📸 Foto Scattata!</div>
 
 <script>
 const SERVER = 'https://videoperizie-server-production.up.railway.app';
@@ -54,15 +345,17 @@ const params = new URLSearchParams(window.location.search);
 const token = params.get('token');
 
 const btnAvvia = document.getElementById('btn-avvia');
-const statoEl = document.getElementById('stato');
+const statoAvvio = document.getElementById('stato-avvio');
 const schermataAvvio = document.getElementById('schermata-avvio');
 const schermataSessione = document.getElementById('schermata-sessione');
 const videoLocale = document.getElementById('video-locale');
 const notificaFoto = document.getElementById('notifica-foto');
+const notificaTesto = document.getElementById('notifica-testo');
+const istruzione = document.getElementById('istruzione');
 
 if (!token) {
-  statoEl.textContent = 'Link non valido. Contatta l\'operatore.';
-  statoEl.className = 'errore';
+  statoAvvio.textContent = 'Link non valido. Contatta l\'operatore.';
+  statoAvvio.className = 'errore';
   btnAvvia.disabled = true;
 }
 
@@ -70,7 +363,7 @@ let socket, pc, localStream;
 
 btnAvvia.addEventListener('click', async () => {
   btnAvvia.disabled = true;
-  statoEl.textContent = 'Accesso fotocamera...';
+  statoAvvio.textContent = 'Accesso fotocamera in corso...';
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
@@ -78,11 +371,11 @@ btnAvvia.addEventListener('click', async () => {
       audio: true
     });
     videoLocale.srcObject = localStream;
-    statoEl.textContent = 'Connessione in corso...';
+    statoAvvio.textContent = 'Connessione al server...';
     collegaSocket();
   } catch(e) {
-    statoEl.textContent = 'Errore: consenti fotocamera e microfono';
-    statoEl.className = 'errore';
+    statoAvvio.textContent = '⚠️ Consenti fotocamera e microfono per continuare';
+    statoAvvio.className = 'errore';
     btnAvvia.disabled = false;
   }
 });
@@ -96,7 +389,7 @@ function collegaSocket() {
 
   socket.on('joined', () => {
     schermataAvvio.style.display = 'none';
-    schermataSessione.style.display = 'block';
+    schermataSessione.style.display = 'flex';
   });
 
   socket.on('segnale', async ({ data }) => {
@@ -117,13 +410,15 @@ function collegaSocket() {
   });
 
   socket.on('peer-disconnesso', () => {
-    document.getElementById('stato-sessione').textContent = '🔴 Operatore disconnesso';
-    document.getElementById('stato-sessione').className = 'errore';
+    istruzione.textContent = '⚠️ Operatore disconnesso';
   });
 
   socket.on('errore', (msg) => {
-    statoEl.textContent = msg;
-    statoEl.className = 'errore';
+    statoAvvio.textContent = msg;
+    statoAvvio.className = 'errore';
+    schermataAvvio.style.display = 'flex';
+    schermataSessione.style.display = 'none';
+    btnAvvia.disabled = true;
   });
 }
 
@@ -145,7 +440,7 @@ async function avviaWebRTC() {
     if (e.streams && e.streams[0]) {
       const audio = new Audio();
       audio.srcObject = e.streams[0];
-      audio.play().catch(err => console.log('Audio error: ' + err));
+      audio.play().catch(() => {});
     }
   };
 }
@@ -163,12 +458,16 @@ function scattaFoto() {
     blob.arrayBuffer().then(buffer => {
       socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)) });
     });
-  }, 'image/jpeg', 0.7);
+  }, 'image/jpeg', 0.85);
 }
 
 function mostraNotifica() {
   notificaFoto.style.display = 'block';
-  setTimeout(() => { notificaFoto.style.display = 'none'; }, 2000);
+  notificaTesto.style.display = 'block';
+  setTimeout(() => {
+    notificaFoto.style.display = 'none';
+    notificaTesto.style.display = 'none';
+  }, 600);
 }
 </script>
 </body>
