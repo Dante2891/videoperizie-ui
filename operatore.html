@@ -413,6 +413,8 @@ main {
       <div id="link-box">Clicca "Nuova Sessione" per iniziare</div>
       <button class="btn btn-primary" id="btn-nuova">＋ Nuova Sessione</button>
       <button class="btn btn-secondary" id="btn-copia" disabled>📋 Copia Link Cliente</button>
+      <button class="btn btn-wa" id="btn-wa">📲 Invia su WhatsApp</button>
+      
     </div>
 
     <div class="section">
@@ -441,6 +443,8 @@ const SERVER = 'https://videoperizie-server-production.up.railway.app';
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token');
 const perizia_id = params.get('perizia_id');
+const telefono_cliente = params.get('telefono');
+const nome_cliente = params.get('nome');  
 const vp_token = localStorage.getItem('vp_token');
 
 if (!token || !vp_token) window.location.href = 'dashboard.html';
