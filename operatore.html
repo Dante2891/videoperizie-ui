@@ -187,7 +187,7 @@ async function avviaWebRTC() {
   }
 
   pc.ontrack = (e) => {
-    if (e.streams && e.streams[0] && !videoRemoto.srcObject) {
+    if (e.streams && e.streams[0]) {
       videoRemoto.srcObject = e.streams[0];
       placeholder.style.display = 'none';
       log('Connessione video stabilita');
