@@ -413,9 +413,9 @@ function resetForm() {
   ['f-nome','f-cognome','f-riferimento','f-telefono'].forEach(id => document.getElementById(id).value = '');
 }
 
-function avviaPerizia(tokenSessione, perizia_id) {
+function avviaPerizia(tokenSessione, perizia_id, telefono, nome) {
   localStorage.setItem('vp_perizia_id', perizia_id);
-  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}`;
+  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}`;
 }
 
 caricaPerizie();
