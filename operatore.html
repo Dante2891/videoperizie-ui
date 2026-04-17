@@ -189,8 +189,9 @@ async function avviaWebRTC() {
   pc.ontrack = (e) => {
     if (e.streams && e.streams[0]) {
       videoRemoto.srcObject = e.streams[0];
+      videoRemoto.play().catch(err => log('Play error: ' + err));
       placeholder.style.display = 'none';
-      log('Connessione video stabilita');
+      log('Video remoto ricevuto - tracks: ' + e.streams[0].getTracks().length);
     }
   };
 
