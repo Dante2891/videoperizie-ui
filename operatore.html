@@ -438,9 +438,14 @@ main {
 
 <script>
 const SERVER = 'https://videoperizie-server-production.up.railway.app';
-const BASE_URL = window.location.origin;
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+const perizia_id = params.get('perizia_id');
+const vp_token = localStorage.getItem('vp_token');
 
-let socket, pc, token, cartella, fotoCount = 0;
+if (!token || !vp_token) window.location.href = 'dashboard.html';
+
+let socket, pc, cartella, fotoCount = 0;
 let localStream;
 
 const statoEl = document.getElementById('stato');
@@ -458,6 +463,14 @@ const logEl = document.getElementById('log');
 const recIndicator = document.getElementById('rec-indicator');
 const flash = document.getElementById('flash');
 
+// Nascondi bottone nuova sessione — viene dalla dashboard
+btnNuova.style.display = 'none';
+
+// Mostra link cliente
+const link = `${window.location.origin}/videoperizie/cliente.html?token=${token}`;
+linkBox.textContent = link;
+btnCopia.disabled = false;
+
 function log(msg) {
   const t = new Date().toLocaleTimeString();
   logEl.innerHTML += `[${t}] ${msg}\n`;
@@ -469,6 +482,16 @@ function setStato(s, classe) {
   statoEl.className = 'badge ' + classe;
 }
 
+async function aggiornaStato(stato) {
+  try {
+    await fetch(`${SERVER}/perizie/${perizia_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${vp_token}` },
+      body: JSON.stringify({ stato })
+    });
+  } catch(e) { log('Errore aggiornamento stato'); }
+}
+
 btnCartella.addEventListener('click', async () => {
   try {
     cartella = await window.showDirectoryPicker();
@@ -477,19 +500,8 @@ btnCartella.addEventListener('click', async () => {
   } catch(e) { log('Selezione cartella annullata'); }
 });
 
-btnNuova.addEventListener('click', async () => {
-  const res = await fetch(`${SERVER}/sessione`, { method: 'POST' });
-  const data = await res.json();
-  token = data.token;
-  const link = `${BASE_URL}/videoperizie/cliente.html?token=${token}`;
-  linkBox.textContent = link;
-  btnCopia.disabled = false;
-  log(`Sessione creata: ${token}`);
-  collegaSocket();
-});
-
 btnCopia.addEventListener('click', () => {
-  navigator.clipboard.writeText(linkBox.textContent);
+  navigator.clipboard.writeText(link);
   btnCopia.textContent = '✅ Link Copiato!';
   setTimeout(() => { btnCopia.textContent = '📋 Copia Link Cliente'; }, 2000);
   log('Link copiato!');
@@ -503,10 +515,22 @@ btnFoto.addEventListener('click', () => {
   }
 });
 
+// Bottone termina sessione
+document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
+  <button class="btn btn-secondary" id="btn-termina">✅ Termina Sessione</button>
+`);
+document.getElementById('btn-termina').addEventListener('click', async () => {
+  await aggiornaStato('completata');
+  window.location.href = 'dashboard.html';
+});
+
 function flashEffect() {
   flash.classList.add('active');
   setTimeout(() => flash.classList.remove('active'), 150);
 }
+
+// Avvia subito la connessione socket con il token dalla URL
+collegaSocket();
 
 function collegaSocket() {
   socket = io(SERVER);
@@ -515,7 +539,7 @@ function collegaSocket() {
   socket.on('connect', () => {
     socket.emit('join-operatore', { token });
     setStato('In attesa cliente', 'attesa');
-    log('Socket connesso, attendo cliente...');
+    log('In attesa che il cliente apra il link...');
   });
 
   socket.on('cliente-connesso', async () => {
@@ -523,6 +547,7 @@ function collegaSocket() {
     log('Cliente connesso! Avvio WebRTC...');
     btnFoto.disabled = false;
     recIndicator.classList.add('visible');
+    await aggiornaStato('in_corso');
     await avviaWebRTC();
   });
 
@@ -536,7 +561,8 @@ function collegaSocket() {
   });
 
   socket.on('foto', async ({ blob }) => {
-    log('Foto ricevuta!');
+    fotoCount++;
+    log(`Foto ricevuta! (${fotoCount})`);
     await salvaFoto(blob);
   });
 
@@ -554,7 +580,7 @@ async function avviaWebRTC() {
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
-    log('Nessun microfono rilevato, solo video');
+    log('Nessun microfono rilevato');
   }
 
   pc = new RTCPeerConnection({
@@ -564,9 +590,7 @@ async function avviaWebRTC() {
     ]
   });
 
-  if (localStream) {
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-  }
+  if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
   pc.addTransceiver('video', { direction: 'recvonly' });
 
@@ -576,9 +600,7 @@ async function avviaWebRTC() {
       placeholder.style.display = 'none';
       videoArea.classList.add('active');
       log('Track ricevuto: ' + e.track.kind);
-      if (videoRemoto.paused) {
-        videoRemoto.play().catch(err => log('Play error: ' + err));
-      }
+      if (videoRemoto.paused) videoRemoto.play().catch(err => log('Play error: ' + err));
     }
   };
 
@@ -593,10 +615,8 @@ async function avviaWebRTC() {
 }
 
 async function salvaFoto(blobData) {
-  fotoCount++;
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const nomeFile = `foto_${String(fotoCount).padStart(3,'0')}_${timestamp}.jpg`;
-
   const byteArr = new Uint8Array(blobData);
   const blob = new Blob([byteArr], { type: 'image/jpeg' });
   const url = URL.createObjectURL(blob);
