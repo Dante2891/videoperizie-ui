@@ -350,7 +350,7 @@ function renderPerizie(perizie) {
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
         <a href="${waLink}" target="_blank" class="btn-wa">📲 WA</a>
-        <button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}')">▶ Avvia</button>"
+        <button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}')">▶ Avvia</button>
       </td>
     </tr>`;
   }).join('');
