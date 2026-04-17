@@ -329,6 +329,12 @@ async function caricaPerizie() {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.status === 401) { localStorage.clear(); window.location.href = 'index.html'; return; }
+	if (res.status === 403) {
+	  alert('Account sospeso. Contatta il supporto.');
+	  localStorage.clear();
+	  window.location.href = 'index.html';
+	  return;
+	}
     tuttePerizie = await res.json();
     aggiornaStat();
     renderPerizie(tuttePerizie);
