@@ -468,6 +468,10 @@ function scattaFoto() {
   ctx.drawImage(videoLocale, 0, 0, w, h);
 
   // Timestamp elegante
+  const ora = new Date();
+  const testo = ora.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }) + 
+                '  ' + 
+                ora.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
   const barH = Math.round(h * 0.07);
 	ctx.fillStyle = 'rgba(0,0,0,0.55)';
 	ctx.fillRect(0, h - barH, w, barH);
