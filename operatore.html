@@ -109,7 +109,7 @@ btnNuova.addEventListener('click', async () => {
   const res = await fetch(`${SERVER}/sessione`, { method: 'POST' });
   const data = await res.json();
   token = data.token;
-  const link = `${BASE_URL}/cliente.html?token=${token}`;
+  const link = `${BASE_URL}/videoperizie/cliente.html?token=${token}`;
   linkBox.textContent = link;
   btnCopia.disabled = false;
   log(`Sessione creata: ${token}`);
