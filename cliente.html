@@ -472,23 +472,37 @@ function scattaFoto() {
   const testo = ora.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }) + 
                 '  ' + 
                 ora.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  const barH = Math.round(h * 0.12);
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(0, h - barH, w, barH);
-
-  const fontSize = Math.round(barH * 0.32);
-  ctx.textBaseline = 'middle';
+  const fontSize = Math.round(h * 0.022);
+  const padding = Math.round(h * 0.012);
+  
+  ctx.font = `bold ${fontSize}px monospace`;
+  const dataW = ctx.measureText(testo).width;
+  
+  let gps = '';
+  if (gpsCoords) gps = `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lon.toFixed(5)}`;
+  ctx.font = `${Math.round(fontSize * 0.8)}px monospace`;
+  const gpsW = gps ? ctx.measureText(gps).width : 0;
+  
+  const boxW = Math.max(dataW, gpsW) + padding * 2;
+  const boxH = gps ? fontSize * 2.4 : fontSize * 1.4;
+  const boxX = w - boxW - padding;
+  const boxY = h - boxH - padding;
+  
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  
   ctx.fillStyle = '#ffffff';
   ctx.font = `bold ${fontSize}px monospace`;
-  ctx.textAlign = 'left';
-  ctx.fillText(testo, 14, h - barH * 0.7);
-
-  if (gpsCoords) {
-    const gps = `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lon.toFixed(5)}`;
-    ctx.font = `${Math.round(fontSize * 0.85)}px monospace`;
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
-    ctx.fillText(gps, 14, h - barH * 0.28);
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText(testo, w - padding * 2, boxY + padding * 0.8);
+  
+  if (gps) {
+    ctx.font = `${Math.round(fontSize * 0.8)}px monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(gps, w - padding * 2, boxY + fontSize * 1.4);
   }
+  ctx.textAlign = 'left';
 
   canvas.toBlob(blob => {
     blob.arrayBuffer().then(buffer => {
