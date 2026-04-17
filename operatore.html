@@ -536,7 +536,8 @@ document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
 `);
 document.getElementById('btn-termina').addEventListener('click', async () => {
   await aggiornaStato('completata');
-  window.location.href = 'dashboard.html';
+  if (socket && token) socket.emit('termina-sessione', { token });
+  setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
 });
 
 function flashEffect() {
