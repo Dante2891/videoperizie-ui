@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Videoperizie — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0d1525;
+  --surface2: #111d33;
+  --border: rgba(99,179,237,0.12);
+  --accent: #3b82f6;
+  --accent2: #60a5fa;
+  --red: #ef4444;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; }
+header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.logo { font-family: var(--font-head); font-weight: 800; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 28px; height: 28px; background: var(--red); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.btn-logout { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
+.btn-logout:hover { border-color: var(--red); color: var(--red); }
+main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+.page-title { font-family: var(--font-head); font-size: 1.5rem; font-weight: 800; }
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.tab { padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-family: var(--font-head); font-weight: 700; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); transition: all 0.2s; }
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-new { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 18px; font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+.btn-new:hover { background: var(--accent2); }
+.table-container { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 12px 20px; font-size: 0.7rem; font-family: var(--font-head); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+.piano-badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; font-family: var(--font-head); }
+.piano-free { background: rgba(100,116,139,0.15); color: var(--muted); }
+.piano-base { background: rgba(59,130,246,0.15); color: var(--accent2); }
+.piano-studio { background: rgba(245,158,11,0.15); color: var(--orange); }
+.piano-pro { background: rgba(16,185,129,0.15); color: var(--green); }
+.stato-badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+.stato-attivo { background: rgba(16,185,129,0.15); color: var(--green); }
+.stato-sospeso { background: rgba(239,68,68,0.15); color: var(--red); }
+.btn-sm { padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: var(--font-head); font-weight: 700; border: none; transition: all 0.2s; margin-right: 4px; }
+.btn-sospendi { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.btn-riattiva { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+.btn-piano { background: rgba(59,130,246,0.1); color: var(--accent2); border: 1px solid rgba(59,130,246,0.2); }
+select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 4px 8px; font-size: 0.8rem; font-family: var(--font-body); outline: none; }
+.log-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; }
+.log-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
+.log-msg { font-size: 0.85rem; }
+.log-msg.errore { color: var(--red); }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.visible { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 500px; margin: 24px; }
+.modal-title { font-family: var(--font-head); font-size: 1.2rem; font-weight: 800; margin-bottom: 20px; }
+.field { margin-bottom: 14px; }
+label { display: block; font-size: 0.75rem; font-family: var(--font-head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+input, select.full { width: 100%; padding: 11px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font-body); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+input:focus { border-color: var(--accent); }
+.modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-cancel { flex: 1; padding: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; }
+.btn-crea { flex: 2; padding: 12px; background: var(--accent); border: none; border-radius: 10px; color: #fff; cursor: pointer; font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; }
+.btn-crea:disabled { opacity: 0.4; }
+.btn-reset { background: rgba(245,158,11,0.1); color: var(--orange); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.85rem; font-family: var(--font-head); font-weight: 700; }
+.sessioni-bar { display: flex; align-items: center; gap: 8px; }
+.bar-bg { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; min-width: 60px; }
+.bar-fill { height: 100%; border-radius: 2px; background: var(--accent); transition: width 0.3s; }
+.bar-fill.warning { background: var(--orange); }
+.bar-fill.danger { background: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚙️</div>
+    Videoperizie <span style="color:var(--red);margin-left:6px;font-size:0.8rem">ADMIN</span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="dashboard.html" style="color:var(--muted);font-size:0.85rem;text-decoration:none">← Dashboard</a>
+    <button class="btn-logout" id="btn-logout">Esci</button>
+  </div>
+</header>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">Pannello Admin</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-reset" id="btn-reset-sessioni">🔄 Reset Sessioni Mese</button>
+      <button class="btn-new" id="btn-nuovo-studio">＋ Nuovo Studio</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-studi" onclick="mostraTab('studi')">Studi</div>
+    <div class="tab" id="tab-logs" onclick="mostraTab('logs')">Log Errori</div>
+  </div>
+
+  <!-- STUDI -->
+  <div id="panel-studi">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Studio</th>
+            <th>Piano</th>
+            <th>Sessioni Mese</th>
+            <th>Stato</th>
+            <th>Creato il</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="studi-body">
+          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Caricamento...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div id="panel-logs" style="display:none">
+    <div id="logs-list"></div>
+  </div>
+</main>
+
+<!-- MODAL NUOVO STUDIO -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">＋ Nuovo Studio</div>
+    <div class="field">
+      <label>Nome Studio</label>
+      <input type="text" id="f-nome-studio" placeholder="Studio Rossi">
+    </div>
+    <div class="field">
+      <label>Email Studio</label>
+      <input type="email" id="f-email-studio" placeholder="info@studiorossi.it">
+    </div>
+    <div class="modal-row">
+      <div class="field">
+        <label>Nome Admin</label>
+        <input type="text" id="f-nome" placeholder="Mario">
+      </div>
+      <div class="field">
+        <label>Cognome Admin</label>
+        <input type="text" id="f-cognome" placeholder="Rossi">
+      </div>
+    </div>
+    <div class="field">
+      <label>Email Admin</label>
+      <input type="email" id="f-email" placeholder="mario@studiorossi.it">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="f-password" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Piano</label>
+      <select class="full" id="f-piano">
+        <option value="base">Base — 30 sessioni/mese</option>
+        <option value="studio">Studio — 100 sessioni/mese</option>
+        <option value="pro">Pro — illimitato</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel">Annulla</button>
+      <button class="btn-crea" id="btn-crea">Crea Studio →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVER = 'https://videoperizie-server-production.up.railway.app';
+const token = localStorage.getItem('vp_token');
+const ruolo = localStorage.getItem('vp_ruolo');
+
+if (!token || ruolo !== 'admin') window.location.href = 'dashboard.html';
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+  localStorage.clear();
+  window.location.href = 'index.html';
+});
+
+function mostraTab(tab) {
+  document.getElementById('panel-studi').style.display = tab === 'studi' ? 'block' : 'none';
+  document.getElementById('panel-logs').style.display = tab === 'logs' ? 'block' : 'none';
+  document.getElementById('tab-studi').className = 'tab' + (tab === 'studi' ? ' active' : '');
+  document.getElementById('tab-logs').className = 'tab' + (tab === 'logs' ? ' active' : '');
+  if (tab === 'logs') caricaLogs();
+}
+
+async function caricaStudi() {
+  const res = await fetch(`${SERVER}/admin/studi`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const studi = await res.json();
+  const tbody = document.getElementById('studi-body');
+  tbody.innerHTML = studi.map(s => {
+    const perc = s.limite_sessioni >= 999999 ? 0 : Math.min(100, Math.round(s.sessioni_mese / s.limite_sessioni * 100));
+    const barClass = perc > 90 ? 'danger' : perc > 70 ? 'warning' : '';
+    const data = new Date(s.creato_il).toLocaleDateString('it-IT');
+    return `
+    <tr>
+      <td><strong>${s.nome}</strong><br><span style="color:var(--muted);font-size:0.78rem">${s.email}</span></td>
+      <td>
+        <span class="piano-badge piano-${s.piano}">${s.piano.toUpperCase()}</span>
+        <select onchange="cambiaPiano('${s.id}', this.value)" style="margin-left:8px">
+          <option value="base" ${s.piano==='base'?'selected':''}>Base</option>
+          <option value="studio" ${s.piano==='studio'?'selected':''}>Studio</option>
+          <option value="pro" ${s.piano==='pro'?'selected':''}>Pro</option>
+        </select>
+      </td>
+      <td>
+        <div class="sessioni-bar">
+          <span>${s.sessioni_mese}/${s.limite_sessioni >= 999999 ? '∞' : s.limite_sessioni}</span>
+          ${s.limite_sessioni < 999999 ? `<div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${perc}%"></div></div>` : ''}
+        </div>
+      </td>
+      <td><span class="stato-badge ${s.attivo ? 'stato-attivo' : 'stato-sospeso'}">${s.attivo ? 'Attivo' : 'Sospeso'}</span></td>
+      <td style="color:var(--muted);font-size:0.82rem">${data}</td>
+      <td>
+        ${s.attivo 
+          ? `<button class="btn-sm btn-sospendi" onclick="toggleStudio('${s.id}', false)">⏸ Sospendi</button>`
+          : `<button class="btn-sm btn-riattiva" onclick="toggleStudio('${s.id}', true)">▶ Riattiva</button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function cambiaPiano(id, piano) {
+  await fetch(`${SERVER}/admin/studi/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ piano })
+  });
+  await caricaStudi();
+}
+
+async function toggleStudio(id, attivo) {
+  await fetch(`${SERVER}/admin/studi/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ attivo })
+  });
+  await caricaStudi();
+}
+
+async function caricaLogs() {
+  const res = await fetch(`${SERVER}/admin/logs`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const logs = await res.json();
+  const el = document.getElementById('logs-list');
+  if (!logs.length) { el.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">Nessun log</p>'; return; }
+  el.innerHTML = logs.map(l => `
+    <div class="log-item">
+      <div class="log-meta">${new Date(l.creato_il).toLocaleString('it-IT')} · ${l.tipo}</div>
+      <div class="log-msg ${l.tipo === 'errore' ? 'errore' : ''}">${l.messaggio}</div>
+      ${l.dettagli ? `<pre style="font-size:0.72rem;color:var(--muted);margin-top:6px;overflow-x:auto">${JSON.stringify(l.dettagli, null, 2)}</pre>` : ''}
+    </div>
+  `).join('');
+}
+
+document.getElementById('btn-reset-sessioni').addEventListener('click', async () => {
+  if (!confirm('Azzerare le sessioni di tutti gli studi?')) return;
+  await fetch(`${SERVER}/admin/reset-sessioni`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  alert('Sessioni azzerate!');
+  await caricaStudi();
+});
+
+document.getElementById('btn-nuovo-studio').addEventListener('click', () => {
+  document.getElementById('modal').classList.add('visible');
+});
+document.getElementById('btn-cancel').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('visible');
+});
+
+document.getElementById('btn-crea').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-crea');
+  btn.disabled = true;
+  btn.textContent = 'Creazione...';
+  try {
+    const res = await fetch(`${SERVER}/admin/studi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({
+        nome_studio: document.getElementById('f-nome-studio').value.trim(),
+        email_studio: document.getElementById('f-email-studio').value.trim(),
+        nome: document.getElementById('f-nome').value.trim(),
+        cognome: document.getElementById('f-cognome').value.trim(),
+        email: document.getElementById('f-email').value.trim(),
+        password: document.getElementById('f-password').value,
+        piano: document.getElementById('f-piano').value
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('modal').classList.remove('visible');
+      await caricaStudi();
+    } else {
+      alert(data.errore || 'Errore');
+    }
+  } catch(e) {
+    alert('Errore di connessione');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Crea Studio →';
+  }
+});
+
+caricaStudi();
+</script>
+</body>
+</html>
