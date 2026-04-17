@@ -400,7 +400,7 @@ document.getElementById('btn-crea').addEventListener('click', async () => {
     document.getElementById('modal').classList.remove('visible');
     resetForm();
     await caricaPerizie();
-    avviaPerizia(perizia.token_sessione, perizia.id);
+    avviaPerizia(perizia.token_sessione, perizia.id, perizia.telefono_cliente, `${perizia.nome_cliente} ${perizia.cognome_cliente}`);
   } catch(e) {
     alert('Errore nella creazione');
   } finally {
