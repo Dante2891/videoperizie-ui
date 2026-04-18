@@ -260,7 +260,15 @@ input:focus { border-color: var(--accent); }
   <div class="table-container">
     <div class="table-header">
       <div class="table-title">PERIZIE STUDIO</div>
-      <input type="text" id="search" placeholder="🔍 Cerca cliente o riferimento..." autocomplete="off">
+      <input type="text" style="position:absolute;left:-9999px">
+	  <input type="password" style="position:absolute;left:-9999px">
+   	  <input 
+	    type="text" 
+	    id="search" 
+	    name="no-autofill-search"
+	    autocomplete="new-password"
+	    placeholder="🔍 Cerca cliente o riferimento..."
+	  >
     </div>
     <table>
       <thead>
@@ -389,6 +397,11 @@ input:focus { border-color: var(--accent); }
 <script>
 const SERVER = 'https://videoperizie-server-production.up.railway.app';
 const token = localStorage.getItem('vp_token');
+
+window.addEventListener('load', () => {
+  const s = document.getElementById('search');
+  if (s) s.value = '';
+});
 
 if (!token) window.location.href = 'index.html';
 
