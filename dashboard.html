@@ -369,7 +369,7 @@ function renderPerizie(perizie) {
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
         <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
-        <button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}')">▶ Avvia</button>
+        ${p.stato !== 'completata' ? `<button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}', '${p.riferimento || ''}')">▶ Avvia</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -432,9 +432,10 @@ function resetForm() {
   ['f-nome','f-cognome','f-riferimento','f-telefono'].forEach(id => document.getElementById(id).value = '');
 }
 
-function avviaPerizia(tokenSessione, perizia_id, telefono, nome) {
+async function avviaPerizia(tokenSessione, perizia_id, telefono, nome, riferimento) {
   localStorage.setItem('vp_perizia_id', perizia_id);
-  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}`;
+  localStorage.setItem('vp_riferimento', riferimento || '');
+  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}&riferimento=${encodeURIComponent(riferimento || '')}`;
 }
 
 caricaPerizie();
