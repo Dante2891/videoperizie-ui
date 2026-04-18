@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ispecto — Il mio Team</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0d1525;
+  --surface2: #111d33;
+  --border: rgba(99,179,237,0.12);
+  --accent: #3b82f6;
+  --accent2: #60a5fa;
+  --red: #ef4444;
+  --green: #10b981;
+  --orange: #f59e0b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; }
+header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 24px; height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 10;
+}
+.logo { font-family: var(--font-head); font-weight: 800; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.studio-badge { font-size: 0.8rem; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
+.btn-back { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 0.8rem; font-family: var(--font-body); text-decoration: none; transition: all 0.2s; }
+.btn-back:hover { border-color: var(--accent); color: var(--accent2); }
+main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+.page-title { font-family: var(--font-head); font-size: 1.5rem; font-weight: 800; }
+.btn-new { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 12px 20px; font-family: var(--font-head); font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 24px rgba(59,130,246,0.4); }
+.btn-new:hover { background: var(--accent2); transform: translateY(-1px); }
+.table-container { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 12px 20px; font-size: 0.7rem; font-family: var(--font-head); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(59,130,246,0.08); }
+.stato-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; font-family: var(--font-head); }
+.stato-attivo { background: rgba(16,185,129,0.15); color: var(--green); }
+.stato-disattivo { background: rgba(100,116,139,0.15); color: var(--muted); }
+.ruolo-badge { background: rgba(59,130,246,0.1); color: var(--accent2); }
+.btn-sm { padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-family: var(--font-head); font-weight: 700; border: none; transition: all 0.2s; }
+.btn-disattiva { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.btn-riattiva { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+.empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+.empty-icon { font-size: 3rem; margin-bottom: 12px; }
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.visible { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 460px; margin: 24px; }
+.modal-title { font-family: var(--font-head); font-size: 1.2rem; font-weight: 800; margin-bottom: 20px; }
+.field { margin-bottom: 14px; }
+label { display: block; font-size: 0.75rem; font-family: var(--font-head); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+input { width: 100%; padding: 11px 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--font-body); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+input:focus { border-color: var(--accent); }
+.modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-cancel { flex: 1; padding: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--muted); cursor: pointer; font-family: var(--font-body); font-size: 0.9rem; transition: all 0.2s; }
+.btn-cancel:hover { border-color: var(--red); color: var(--red); }
+.btn-crea { flex: 2; padding: 12px; background: var(--accent); border: none; border-radius: 10px; color: #fff; cursor: pointer; font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; transition: all 0.2s; }
+.btn-crea:hover { background: var(--accent2); }
+.btn-crea:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <img src="Logo.png" alt="Ispecto" style="height:28px;width:auto;">
+    Ispecto
+  </div>
+  <div class="header-right">
+    <span class="studio-badge" id="studio-nome">Studio</span>
+    <a href="dashboard.html" class="btn-back">← Dashboard</a>
+  </div>
+</header>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">👥 Il mio Team</div>
+    <button class="btn-new" id="btn-nuovo">＋ Nuovo Operatore</button>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Ruolo</th>
+          <th>Stato</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody id="team-body">
+        <tr><td colspan="4"><div class="empty"><div class="empty-icon">⏳</div>Caricamento...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- MODAL NUOVO OPERATORE -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">＋ Nuovo Operatore</div>
+    <div class="modal-row">
+      <div class="field">
+        <label>Nome</label>
+        <input type="text" id="op-nome" placeholder="Mario">
+      </div>
+      <div class="field">
+        <label>Cognome</label>
+        <input type="text" id="op-cognome" placeholder="Rossi">
+      </div>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="op-email" placeholder="mario@studio.it">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="op-password" placeholder="••••••••">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel">Annulla</button>
+      <button class="btn-crea" id="btn-crea">Crea Operatore →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVER = 'https://videoperizie-server-production.up.railway.app';
+const token = localStorage.getItem('vp_token');
+const ruolo = localStorage.getItem('vp_ruolo');
+
+if (!token || !['admin','superadmin'].includes(ruolo)) window.location.href = 'dashboard.html';
+
+document.getElementById('studio-nome').textContent = localStorage.getItem('vp_studio') || '';
+
+async function caricaTeam() {
+  const res = await fetch(`${SERVER}/studio/operatori`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const operatori = await res.json();
+  const tbody = document.getElementById('team-body');
+  if (!operatori.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div>Nessun operatore ancora.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = operatori.map(op => `
+    <tr>
+      <td><strong>${op.nome} ${op.cognome}</strong></td>
+      <td><span class="stato-badge ruolo-badge">${op.ruolo}</span></td>
+      <td><span class="stato-badge ${op.attivo ? 'stato-attivo' : 'stato-disattivo'}">${op.attivo ? 'Attivo' : 'Disattivo'}</span></td>
+      <td>
+        ${op.ruolo !== 'superadmin' ? `
+          <button class="btn-sm ${op.attivo ? 'btn-disattiva' : 'btn-riattiva'}" onclick="toggleOperatore('${op.id}', ${!op.attivo})">
+            ${op.attivo ? '⏸ Disattiva' : '▶ Riattiva'}
+          </button>
+        ` : '—'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('btn-nuovo').addEventListener('click', () => {
+  document.getElementById('modal').classList.add('visible');
+});
+document.getElementById('btn-cancel').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('visible');
+});
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('visible');
+});
+
+document.getElementById('btn-crea').addEventListener('click', async () => {
+  const nome = document.getElementById('op-nome').value.trim();
+  const cognome = document.getElementById('op-cognome').value.trim();
+  const email = document.getElementById('op-email').value.trim();
+  const password = document.getElementById('op-password').value;
+  if (!nome || !cognome || !email || !password) { alert('Tutti i campi sono obbligatori'); return; }
+  const btn = document.getElementById('btn-crea');
+  btn.disabled = true; btn.textContent = 'Creazione...';
+  try {
+    const res = await fetch(`${SERVER}/studio/operatori`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ nome, cognome, email, password })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('modal').classList.remove('visible');
+      ['op-nome','op-cognome','op-email','op-password'].forEach(id => document.getElementById(id).value = '');
+      await caricaTeam();
+    } else { alert(data.errore || 'Errore'); }
+  } catch(e) { alert('Errore di connessione'); }
+  finally { btn.disabled = false; btn.textContent = 'Crea Operatore →'; }
+});
+
+async function toggleOperatore(id, attivo) {
+  await fetch(`${SERVER}/studio/operatori/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ attivo })
+  });
+  await caricaTeam();
+}
+
+caricaTeam();
+</script>
+</body>
+</html>
