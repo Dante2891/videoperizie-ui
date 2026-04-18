@@ -115,13 +115,14 @@ input:focus { border-color: var(--accent); }
             <th>Studio</th>
             <th>Piano</th>
             <th>Sessioni Mese</th>
+            <th>Operatori</th>
             <th>Stato</th>
             <th>Creato il</th>
             <th>Azioni</th>
           </tr>
         </thead>
         <tbody id="studi-body">
-          <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Caricamento...</td></tr>
+          <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Caricamento...</td></tr>
         </tbody>
       </table>
     </div>
@@ -225,6 +226,10 @@ async function caricaStudi() {
           <span>${s.sessioni_mese}/${s.limite_sessioni >= 999999 ? '∞' : s.limite_sessioni}</span>
           ${s.limite_sessioni < 999999 ? `<div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${perc}%"></div></div>` : ''}
         </div>
+      </td>
+      <td style="text-align:center">
+        <span style="font-weight:700;color:var(--text)">${s.num_operatori_attivi}</span>
+        <span style="color:var(--muted);font-size:0.78rem"> / ${s.num_operatori}</span>
       </td>
       <td><span class="stato-badge ${s.attivo ? 'stato-attivo' : 'stato-sospeso'}">${s.attivo ? 'Attivo' : 'Sospeso'}</span></td>
       <td style="color:var(--muted);font-size:0.82rem">${data}</td>
