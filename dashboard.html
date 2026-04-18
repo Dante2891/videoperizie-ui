@@ -290,14 +290,13 @@ input:focus { border-color: var(--accent); }
         <thead>
           <tr>
             <th>Nome</th>
-            <th>Email</th>
             <th>Ruolo</th>
             <th>Stato</th>
             <th>Azioni</th>
           </tr>
         </thead>
         <tbody id="team-body">
-          <tr><td colspan="5"><div class="empty"><div class="empty-icon">⏳</div>Caricamento...</div></td></tr>
+          <tr><td colspan="4"><div class="empty"><div class="empty-icon">⏳</div>Caricamento...</div></td></tr>
         </tbody>
       </table>
     </div>
@@ -564,13 +563,12 @@ async function caricaTeam() {
   const operatori = await res.json();
   const tbody = document.getElementById('team-body');
   if (!operatori.length) {
-    tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div>Nessun operatore ancora.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">👥</div>Nessun operatore ancora.</div></td></tr>`;
     return;
   }
   tbody.innerHTML = operatori.map(op => `
     <tr>
       <td><strong>${op.nome} ${op.cognome}</strong></td>
-      <td style="color:var(--muted)">${op.email}</td>
       <td><span class="stato-badge" style="background:rgba(59,130,246,0.1);color:var(--accent2)">${op.ruolo}</span></td>
       <td><span class="stato-badge ${op.attivo ? 'stato-completata' : 'stato-creata'}">${op.attivo ? 'Attivo' : 'Disattivo'}</span></td>
       <td>
