@@ -222,12 +222,12 @@ input:focus { border-color: var(--accent); }
 
 <header>
   <div class="logo">
-    <div class="logo-icon">📹</div>
+    <img src="Logo.png" alt="Ispecto" style="height:28px;width:auto;">
     Ispecto
   </div>
   <div class="header-right">
     <span class="studio-badge" id="studio-nome">Studio</span>
-    <button id="btn-cartella-default" title="Seleziona cartella predefinita per le foto" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);transition:all 0.2s;display:flex;align-items:center;gap:6px;">📁 Cartella</button>
+    <button id="btn-cartella-default" title="Seleziona cartella predefinita per le foto" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);transition:all 0.2s;display:flex;align-items:center;gap:6px;">📁 Cartella foto</button>
     <button class="btn-logout" id="btn-logout">Esci</button>
   </div>
 </header>
@@ -322,9 +322,7 @@ document.getElementById('btn-logout').addEventListener('click', () => {
   window.location.href = 'index.html';
 });
 
-// Cartella predefinita via IndexedDB
-let cartellaDefault = null;
-
+// IndexedDB cartella predefinita
 async function apriDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open('ispecto', 1);
@@ -333,13 +331,11 @@ async function apriDB() {
     req.onerror = reject;
   });
 }
-
 async function salvaCartellaDB(handle) {
   const db = await apriDB();
   const tx = db.transaction('cartella', 'readwrite');
   tx.objectStore('cartella').put(handle, 'default');
 }
-
 async function caricaCartellaDB() {
   try {
     const db = await apriDB();
@@ -352,24 +348,22 @@ async function caricaCartellaDB() {
   } catch(e) { return null; }
 }
 
-// Carica cartella salvata all'avvio
+// Carica cartella salvata all'avvio dashboard
 (async () => {
-  cartellaDefault = await caricaCartellaDB();
-  if (cartellaDefault) {
-    const perm = await cartellaDefault.queryPermission({ mode: 'readwrite' });
+  const handle = await caricaCartellaDB();
+  if (handle) {
+    const perm = await handle.queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
-      document.getElementById('btn-cartella-default').innerHTML = `✅ ${cartellaDefault.name}`;
-    } else {
-      cartellaDefault = null;
+      document.getElementById('btn-cartella-default').innerHTML = `✅ ${handle.name}`;
     }
   }
 })();
 
 document.getElementById('btn-cartella-default').addEventListener('click', async () => {
   try {
-    cartellaDefault = await window.showDirectoryPicker();
-    await salvaCartellaDB(cartellaDefault);
-    document.getElementById('btn-cartella-default').innerHTML = `✅ ${cartellaDefault.name}`;
+    const handle = await window.showDirectoryPicker();
+    await salvaCartellaDB(handle);
+    document.getElementById('btn-cartella-default').innerHTML = `✅ ${handle.name}`;
   } catch(e) {}
 });
 
@@ -421,7 +415,7 @@ function renderPerizie(perizie) {
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
         <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
-        <button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}')">▶ Avvia</button>
+        ${p.stato !== 'completata' ? `<button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}', '${p.riferimento || ''}')">▶ Avvia</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -471,7 +465,7 @@ document.getElementById('btn-crea').addEventListener('click', async () => {
     document.getElementById('modal').classList.remove('visible');
     resetForm();
     await caricaPerizie();
-    avviaPerizia(perizia.token_sessione, perizia.id, perizia.telefono_cliente, `${perizia.nome_cliente} ${perizia.cognome_cliente}`);
+    avviaPerizia(perizia.token_sessione, perizia.id, perizia.telefono_cliente, `${perizia.nome_cliente} ${perizia.cognome_cliente}`, perizia.riferimento || '');
   } catch(e) {
     alert('Errore nella creazione');
   } finally {
@@ -484,9 +478,10 @@ function resetForm() {
   ['f-nome','f-cognome','f-riferimento','f-telefono'].forEach(id => document.getElementById(id).value = '');
 }
 
-function avviaPerizia(tokenSessione, perizia_id, telefono, nome) {
+function avviaPerizia(tokenSessione, perizia_id, telefono, nome, riferimento) {
   localStorage.setItem('vp_perizia_id', perizia_id);
-  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}`;
+  localStorage.setItem('vp_riferimento', riferimento || '');
+  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}&riferimento=${encodeURIComponent(riferimento || '')}`;
 }
 
 caricaPerizie();
