@@ -228,6 +228,7 @@ input:focus { border-color: var(--accent); }
   <div class="header-right">
     <span class="studio-badge" id="studio-nome">Studio</span>
     <button id="btn-cartella-default" title="Seleziona cartella predefinita per le foto" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);transition:all 0.2s;display:flex;align-items:center;gap:6px;">📁 Cartella foto</button>
+    <a id="link-team" href="team.html" style="display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);text-decoration:none;transition:all 0.2s;">👥 Il mio Team</a>
     <button class="btn-logout" id="btn-logout">Esci</button>
   </div>
 </header>
@@ -315,6 +316,10 @@ const token = localStorage.getItem('vp_token');
 if (!token) window.location.href = 'index.html';
 
 document.getElementById('studio-nome').textContent = localStorage.getItem('vp_studio') || '';
+const ruolo = localStorage.getItem('vp_ruolo');
+if (ruolo === 'admin' || ruolo === 'superadmin') {
+  document.getElementById('link-team').style.display = 'inline-block';
+}
 document.getElementById('operatore-nome').innerHTML = `<span>${localStorage.getItem('vp_nome') || ''}</span>`;
 
 document.getElementById('btn-logout').addEventListener('click', () => {
