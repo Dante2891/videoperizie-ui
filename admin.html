@@ -185,7 +185,7 @@ const SERVER = 'https://videoperizie-server-production.up.railway.app';
 const token = localStorage.getItem('vp_token');
 const ruolo = localStorage.getItem('vp_ruolo');
 
-if (!token || ruolo !== 'admin') window.location.href = 'dashboard.html';
+if (!token || ruolo !== 'superadmin') window.location.href = 'dashboard.html';
 
 document.getElementById('btn-logout').addEventListener('click', () => {
   localStorage.clear();
