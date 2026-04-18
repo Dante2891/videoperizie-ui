@@ -260,7 +260,7 @@ input:focus { border-color: var(--accent); }
   <div class="table-container">
     <div class="table-header">
       <div class="table-title">PERIZIE STUDIO</div>
-      <input type="text" id="search" placeholder="🔍 Cerca cliente o riferimento...">
+      <input type="text" id="search" placeholder="🔍 Cerca cliente o riferimento..." autocomplete="off">
     </div>
     <table>
       <thead>
@@ -358,6 +358,30 @@ input:focus { border-color: var(--accent); }
     <div class="modal-actions">
       <button class="btn-cancel" id="btn-cancel-op">Annulla</button>
       <button class="btn-crea" id="btn-crea-op">Crea Operatore →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIO PASSWORD -->
+<div class="modal-overlay" id="modal-password">
+  <div class="modal">
+    <div class="modal-title">⚙️ Cambio Password</div>
+    <div class="field">
+      <label>Password Attuale</label>
+      <input type="password" id="pwd-attuale" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Nuova Password</label>
+      <input type="password" id="pwd-nuova" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Conferma Nuova Password</label>
+      <input type="password" id="pwd-conferma" placeholder="••••••••">
+    </div>
+    <div id="pwd-errore" style="display:none;margin-top:8px;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:0.85rem;color:var(--red);"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel-pwd">Annulla</button>
+      <button class="btn-crea" id="btn-salva-pwd">Salva Password →</button>
     </div>
   </div>
 </div>
@@ -668,28 +692,5 @@ document.getElementById('btn-salva-pwd').addEventListener('click', async () => {
 
 </script>
 
-<!-- MODAL CAMBIO PASSWORD -->
-<div class="modal-overlay" id="modal-password">
-  <div class="modal">
-    <div class="modal-title">⚙️ Cambio Password</div>
-    <div class="field">
-      <label>Password Attuale</label>
-      <input type="password" id="pwd-attuale" placeholder="••••••••">
-    </div>
-    <div class="field">
-      <label>Nuova Password</label>
-      <input type="password" id="pwd-nuova" placeholder="••••••••">
-    </div>
-    <div class="field">
-      <label>Conferma Nuova Password</label>
-      <input type="password" id="pwd-conferma" placeholder="••••••••">
-    </div>
-    <div id="pwd-errore" style="display:none;margin-top:8px;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:0.85rem;color:var(--red);"></div>
-    <div class="modal-actions">
-      <button class="btn-cancel" id="btn-cancel-pwd">Annulla</button>
-      <button class="btn-crea" id="btn-salva-pwd">Salva Password →</button>
-    </div>
-  </div>
-</div>
 
 </html>
