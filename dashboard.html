@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Videoperizie — Dashboard</title>
+<title>Ispecto — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -222,8 +222,8 @@ input:focus { border-color: var(--accent); }
 
 <header>
   <div class="logo">
-    <div class="logo-icon">📹</div>
-    Videoperizie
+    <img src="Logo.png" alt="Ispecto" style="height:28px;width:auto;">
+    Ispecto
   </div>
   <div class="header-right">
     <span class="studio-badge" id="studio-nome">Studio</span>
@@ -369,7 +369,7 @@ function renderPerizie(perizie) {
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
         <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
-        ${p.stato !== 'completata' ? `<button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}', '${p.riferimento || ''}')">▶ Avvia</button>` : ''}
+        <button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}')">▶ Avvia</button>
       </td>
     </tr>`;
   }).join('');
@@ -432,10 +432,9 @@ function resetForm() {
   ['f-nome','f-cognome','f-riferimento','f-telefono'].forEach(id => document.getElementById(id).value = '');
 }
 
-async function avviaPerizia(tokenSessione, perizia_id, telefono, nome, riferimento) {
+function avviaPerizia(tokenSessione, perizia_id, telefono, nome) {
   localStorage.setItem('vp_perizia_id', perizia_id);
-  localStorage.setItem('vp_riferimento', riferimento || '');
-  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}&riferimento=${encodeURIComponent(riferimento || '')}`;
+  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}`;
 }
 
 caricaPerizie();
