@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Videoperizie — Operatore</title>
+<title>Ispecto — Operatore</title>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -217,7 +217,7 @@ main {
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
@@ -390,8 +390,8 @@ main {
 
 <header>
   <div class="logo">
-    <div class="logo-icon">📹</div>
-    Videoperizie <span>/ Operatore</span>
+    <img src="Logo.png" alt="Ispecto" style="height:28px;width:auto;">
+    Ispecto <span>/ Operatore</span>
   </div>
   <span id="stato" class="badge">Disconnesso</span>
 </header>
@@ -447,8 +447,7 @@ const params = new URLSearchParams(window.location.search);
 const token = params.get('token');
 const perizia_id = params.get('perizia_id');
 const telefono_cliente = params.get('telefono');
-const nome_cliente = params.get('nome');
-const riferimento = params.get('riferimento') || localStorage.getItem('vp_riferimento') || '';
+const nome_cliente = params.get('nome');  
 const vp_token = localStorage.getItem('vp_token');
 
 if (!token || !vp_token) window.location.href = 'dashboard.html';
@@ -632,10 +631,8 @@ async function avviaWebRTC() {
 }
 
 async function salvaFoto(blobData) {
-  const timestamp = new Date().toISOString().slice(0,10);
-  const ora = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
-  const ref = riferimento ? riferimento.replace(/[^a-zA-Z0-9]/g, '_') : 'perizia';
-  const nomeFile = `${ref}_${timestamp}_${ora}_${String(fotoCount).padStart(3,'0')}.jpg`;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const nomeFile = `foto_${String(fotoCount).padStart(3,'0')}_${timestamp}.jpg`;
   const byteArr = new Uint8Array(blobData);
   const blob = new Blob([byteArr], { type: 'image/jpeg' });
   const url = URL.createObjectURL(blob);
