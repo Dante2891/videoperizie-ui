@@ -228,7 +228,8 @@ input:focus { border-color: var(--accent); }
   <div class="header-right">
     <span class="studio-badge" id="studio-nome">Studio</span>
     <button id="btn-cartella-default" title="Seleziona cartella predefinita per le foto" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);transition:all 0.2s;display:flex;align-items:center;gap:6px;">📁 Cartella foto</button>
-    <a id="link-team" href="team.html" style="display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);text-decoration:none;transition:all 0.2s;">👥 Il mio Team</a>
+    <a id="link-team" href="team.html" style="display:none;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:0.8rem;font-family:var(--font-body);text-decoration:none;">👥 Il mio Team</a>
+    <button id="btn-settings" title="Impostazioni account" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--muted);font-size:1rem;transition:all 0.2s;">⚙️</button>
     <button class="btn-logout" id="btn-logout">Esci</button>
   </div>
 </header>
@@ -278,6 +279,30 @@ input:focus { border-color: var(--accent); }
       </tbody>
     </table>
   </div>
+  <!-- SEZIONE TEAM - solo admin -->
+  <div id="sezione-team" style="display:none;margin-top:28px;">
+    <div class="page-header" style="margin-bottom:16px;">
+      <div class="page-title" style="font-size:1.1rem;">Il mio Team</div>
+      <button class="btn-new" id="btn-nuovo-operatore" style="padding:10px 16px;font-size:0.85rem;">＋ Nuovo Operatore</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Ruolo</th>
+            <th>Stato</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody id="team-body">
+          <tr><td colspan="5"><div class="empty"><div class="empty-icon">⏳</div>Caricamento...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </main>
 
 <!-- MODAL NUOVA PERIZIA -->
@@ -309,6 +334,35 @@ input:focus { border-color: var(--accent); }
   </div>
 </div>
 
+<!-- MODAL NUOVO OPERATORE -->
+<div class="modal-overlay" id="modal-operatore">
+  <div class="modal">
+    <div class="modal-title">＋ Nuovo Operatore</div>
+    <div class="modal-row">
+      <div class="field">
+        <label>Nome</label>
+        <input type="text" id="op-nome" placeholder="Mario">
+      </div>
+      <div class="field">
+        <label>Cognome</label>
+        <input type="text" id="op-cognome" placeholder="Rossi">
+      </div>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="op-email" placeholder="mario@studio.it">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="op-password" placeholder="••••••••">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel-op">Annulla</button>
+      <button class="btn-crea" id="btn-crea-op">Crea Operatore →</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SERVER = 'https://videoperizie-server-production.up.railway.app';
 const token = localStorage.getItem('vp_token');
@@ -316,10 +370,6 @@ const token = localStorage.getItem('vp_token');
 if (!token) window.location.href = 'index.html';
 
 document.getElementById('studio-nome').textContent = localStorage.getItem('vp_studio') || '';
-const ruolo = localStorage.getItem('vp_ruolo');
-if (ruolo === 'admin' || ruolo === 'superadmin') {
-  document.getElementById('link-team').style.display = 'inline-block';
-}
 document.getElementById('operatore-nome').innerHTML = `<span>${localStorage.getItem('vp_nome') || ''}</span>`;
 
 document.getElementById('btn-logout').addEventListener('click', () => {
@@ -501,6 +551,147 @@ async function terminaPerizia(id) {
   await caricaPerizie();
 }
 
+// Mostra link team per admin
+const ruolo = localStorage.getItem('vp_ruolo');
+if (ruolo === 'admin' || ruolo === 'superadmin') {
+  document.getElementById('link-team').style.display = 'inline-block';
+}
+
+async function caricaTeam() {
+  const res = await fetch(`${SERVER}/studio/operatori`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  const operatori = await res.json();
+  const tbody = document.getElementById('team-body');
+  if (!operatori.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">👥</div>Nessun operatore ancora.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = operatori.map(op => `
+    <tr>
+      <td><strong>${op.nome} ${op.cognome}</strong></td>
+      <td style="color:var(--muted)">${op.email}</td>
+      <td><span class="stato-badge" style="background:rgba(59,130,246,0.1);color:var(--accent2)">${op.ruolo}</span></td>
+      <td><span class="stato-badge ${op.attivo ? 'stato-completata' : 'stato-creata'}">${op.attivo ? 'Attivo' : 'Disattivo'}</span></td>
+      <td>
+        ${op.ruolo !== 'superadmin' ? `
+          <button class="btn-termina-dash" onclick="toggleOperatore('${op.id}', ${!op.attivo})" style="${op.attivo ? 'background:rgba(239,68,68,0.1);color:var(--red);border-color:rgba(239,68,68,0.2)' : ''}">
+            ${op.attivo ? '⏸ Disattiva' : '▶ Riattiva'}
+          </button>
+        ` : '—'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('btn-nuovo-operatore').addEventListener('click', () => {
+  document.getElementById('modal-operatore').classList.add('visible');
+});
+document.getElementById('btn-cancel-op').addEventListener('click', () => {
+  document.getElementById('modal-operatore').classList.remove('visible');
+});
+
+document.getElementById('btn-crea-op').addEventListener('click', async () => {
+  const nome = document.getElementById('op-nome').value.trim();
+  const cognome = document.getElementById('op-cognome').value.trim();
+  const email = document.getElementById('op-email').value.trim();
+  const password = document.getElementById('op-password').value;
+  if (!nome || !cognome || !email || !password) { alert('Tutti i campi sono obbligatori'); return; }
+  const btn = document.getElementById('btn-crea-op');
+  btn.disabled = true; btn.textContent = 'Creazione...';
+  try {
+    const res = await fetch(`${SERVER}/studio/operatori`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ nome, cognome, email, password })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('modal-operatore').classList.remove('visible');
+      ['op-nome','op-cognome','op-email','op-password'].forEach(id => document.getElementById(id).value = '');
+      await caricaTeam();
+    } else { alert(data.errore || 'Errore'); }
+  } catch(e) { alert('Errore di connessione'); }
+  finally { btn.disabled = false; btn.textContent = 'Crea Operatore →'; }
+});
+
+async function toggleOperatore(id, attivo) {
+  await fetch(`${SERVER}/studio/operatori/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ attivo })
+  });
+  await caricaTeam();
+}
+
+// CAMBIO PASSWORD
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('modal-password').classList.add('visible');
+  ['pwd-attuale','pwd-nuova','pwd-conferma'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pwd-errore').style.display = 'none';
+});
+document.getElementById('btn-cancel-pwd').addEventListener('click', () => {
+  document.getElementById('modal-password').classList.remove('visible');
+});
+document.getElementById('modal-password').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-password')) document.getElementById('modal-password').classList.remove('visible');
+});
+
+document.getElementById('btn-salva-pwd').addEventListener('click', async () => {
+  const attuale = document.getElementById('pwd-attuale').value;
+  const nuova = document.getElementById('pwd-nuova').value;
+  const conferma = document.getElementById('pwd-conferma').value;
+  const errEl = document.getElementById('pwd-errore');
+  errEl.style.display = 'none';
+
+  if (!attuale || !nuova || !conferma) { errEl.textContent = 'Compila tutti i campi'; errEl.style.display = 'block'; return; }
+  if (nuova !== conferma) { errEl.textContent = 'Le nuove password non coincidono'; errEl.style.display = 'block'; return; }
+  if (nuova.length < 6) { errEl.textContent = 'La password deve essere di almeno 6 caratteri'; errEl.style.display = 'block'; return; }
+
+  const btn = document.getElementById('btn-salva-pwd');
+  btn.disabled = true; btn.textContent = 'Salvataggio...';
+  try {
+    const res = await fetch(`${SERVER}/auth/cambio-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ password_attuale: attuale, password_nuova: nuova })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('modal-password').classList.remove('visible');
+      alert('Password aggiornata!');
+    } else {
+      errEl.textContent = data.errore || 'Errore';
+      errEl.style.display = 'block';
+    }
+  } catch(e) { errEl.textContent = 'Errore di connessione'; errEl.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Salva Password →'; }
+});
+
 </script>
+<!-- MODAL CAMBIO PASSWORD -->
+<div class="modal-overlay" id="modal-password">
+  <div class="modal">
+    <div class="modal-title">⚙️ Cambio Password</div>
+    <div class="field">
+      <label>Password Attuale</label>
+      <input type="password" id="pwd-attuale" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Nuova Password</label>
+      <input type="password" id="pwd-nuova" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>Conferma Nuova Password</label>
+      <input type="password" id="pwd-conferma" placeholder="••••••••">
+    </div>
+    <div id="pwd-errore" style="display:none;margin-top:8px;padding:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;font-size:0.85rem;color:var(--red);"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel-pwd">Annulla</button>
+      <button class="btn-crea" id="btn-salva-pwd">Salva Password →</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
