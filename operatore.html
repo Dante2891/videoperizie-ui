@@ -530,11 +530,15 @@ async function caricaCartellaDB() {
 (async () => {
   const handle = await caricaCartellaDB();
   if (handle) {
-    const perm = await handle.queryPermission({ mode: 'readwrite' });
-    if (perm === 'granted') {
-      cartella = handle;
-      btnCartella.textContent = `✅ ${cartella.name}`;
-      log(`Cartella predefinita: ${cartella.name}`);
+    try {
+      const perm = await handle.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        cartella = handle;
+        btnCartella.textContent = `✅ ${cartella.name}`;
+        log(`Cartella predefinita: ${cartella.name}`);
+      }
+    } catch(e) {
+      log('Riseleziona la cartella');
     }
   }
 })();
