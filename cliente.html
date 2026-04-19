@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Ispecto</title>
+<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -530,13 +531,37 @@ function scattaFoto() {
   ctx.textAlign = 'left';
 
   canvas.toBlob(blob => {
-    blob.arrayBuffer().then(buffer => {
-      socket.emit('foto', { 
-        token, 
-        blob: Array.from(new Uint8Array(buffer)),
-        gps: gpsCoords
-      });
-    });
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        if (gpsCoords && typeof piexif !== 'undefined') {
+          const exif = {
+            'GPS': {
+              [piexif.GPSIFD.GPSLatitudeRef]: gpsCoords.lat >= 0 ? 'N' : 'S',
+              [piexif.GPSIFD.GPSLatitude]: piexif.GPSHelper.decimalToDms(Math.abs(gpsCoords.lat)),
+              [piexif.GPSIFD.GPSLongitudeRef]: gpsCoords.lon >= 0 ? 'E' : 'W',
+              [piexif.GPSIFD.GPSLongitude]: piexif.GPSHelper.decimalToDms(Math.abs(gpsCoords.lon)),
+            }
+          };
+          const exifStr = piexif.dump(exif);
+          const newData = piexif.insert(exifStr, e.target.result);
+          const newBlob = new Blob([piexif.toBuffer(newData)], { type: 'image/jpeg' });
+          newBlob.arrayBuffer().then(buffer => {
+            socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)), gps: gpsCoords });
+          });
+        } else {
+          blob.arrayBuffer().then(buffer => {
+            socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)), gps: gpsCoords });
+          });
+        }
+      } catch(err) {
+        // Fallback senza EXIF
+        blob.arrayBuffer().then(buffer => {
+          socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)), gps: gpsCoords });
+        });
+      }
+    };
+    reader.readAsDataURL(blob);
   }, 'image/jpeg', 0.85);
 }
 
