@@ -545,7 +545,11 @@ function scattaFoto() {
           };
           const exifStr = piexif.dump(exif);
           const newData = piexif.insert(exifStr, e.target.result);
-          const newBlob = new Blob([piexif.toBuffer(newData)], { type: 'image/jpeg' });
+          // Converti data URL base64 in Blob
+          const byteString = atob(newData.split(',')[1]);
+          const arr = new Uint8Array(byteString.length);
+          for (let i = 0; i < byteString.length; i++) arr[i] = byteString.charCodeAt(i);
+          const newBlob = new Blob([arr], { type: 'image/jpeg' });
           newBlob.arrayBuffer().then(buffer => {
             socket.emit('foto', { token, blob: Array.from(new Uint8Array(buffer)), gps: gpsCoords });
           });
