@@ -483,7 +483,7 @@ if (navigator.geolocation) {
 
 function scattaFoto() {
   const canvas = document.createElement('canvas');
-  const MAX = 1024;
+  const MAX = 1280;
   let w = videoLocale.videoWidth;
   let h = videoLocale.videoHeight;
   if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
