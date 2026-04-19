@@ -455,6 +455,24 @@ if (!token || !vp_token) window.location.href = 'dashboard.html';
 
 let socket, pc, cartella, fotoCount = 0;
 let localStream;
+let logoImg = null;
+
+// Carica logo studio all'avvio
+(async () => {
+  try {
+    const res = await fetch(`${SERVER}/studio/logo`, {
+      headers: { 'Authorization': `Bearer ${vp_token}` }
+    });
+    const data = await res.json();
+    if (data.logo_url) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { logoImg = img; log('Logo studio caricato'); };
+      img.onerror = () => { logoImg = null; };
+      img.src = data.logo_url;
+    }
+  } catch(e) { logoImg = null; }
+})();
 
 const statoEl = document.getElementById('stato');
 const linkBox = document.getElementById('link-box');
@@ -681,7 +699,27 @@ async function salvaFoto(blobData) {
   const ref = riferimento ? riferimento.replace(/[^a-zA-Z0-9]/g, '_') : 'perizia';
   const nomeFile = `${ref}_${timestamp}_${ora}_${String(fotoCount).padStart(3,'0')}.jpg`;
   const byteArr = new Uint8Array(blobData);
-  const blob = new Blob([byteArr], { type: 'image/jpeg' });
+  let blob = new Blob([byteArr], { type: 'image/jpeg' });
+
+  // Sovrapponi logo se disponibile
+  if (logoImg) {
+    try {
+      const bmp = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bmp, 0, 0);
+      const maxH = Math.round(bmp.height * 0.08);
+      const logoW = Math.round(maxH * (logoImg.width / logoImg.height));
+      const padding = Math.round(bmp.height * 0.012);
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(logoImg, padding, padding, logoW, maxH);
+      ctx.globalAlpha = 1.0;
+      blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+    } catch(e) { log('Logo non applicato: ' + e.message); }
+  }
+
   const url = URL.createObjectURL(blob);
 
   const item = document.createElement('div');
