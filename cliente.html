@@ -533,6 +533,8 @@ function scattaFoto() {
   canvas.toBlob(blob => {
     const reader = new FileReader();
     reader.onload = function(e) {
+	  console.log('piexif disponibile:', typeof piexif !== 'undefined');
+      console.log('gpsCoords:', gpsCoords);
       try {
         if (gpsCoords && typeof piexif !== 'undefined') {
           const exif = {
