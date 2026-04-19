@@ -371,13 +371,17 @@ if (!token) {
         statoAvvio.textContent = msg;
         statoAvvio.className = 'errore';
         btnAvvia.disabled = true;
-      } else if (data.stato === 'creata') {
-        statoAvvio.textContent = 'In attesa dell\'operatore...';
+      } else {
+        if (data.logo_url) logoUrl = data.logo_url;
+        if (data.stato === 'creata') {
+          statoAvvio.textContent = 'In attesa dell\'operatore...';
+        }
       }
     });
 }
 
 let socket, pc, localStream;
+let logoUrl = null;
 
 btnAvvia.addEventListener('click', async () => {
   btnAvvia.disabled = true;
@@ -481,7 +485,7 @@ if (navigator.geolocation) {
   );
 }
 
-function scattaFoto() {
+async function scattaFoto() {
   const canvas = document.createElement('canvas');
   const MAX = 1280;
   let w = videoLocale.videoWidth;
@@ -491,6 +495,29 @@ function scattaFoto() {
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(videoLocale, 0, 0, w, h);
+
+  // Logo studio in alto a sinistra
+  if (logoUrl) {
+    try {
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const maxH = Math.round(h * 0.08);
+          const ratio = img.width / img.height;
+          const logoH = maxH;
+          const logoW = Math.round(logoH * ratio);
+          const padding = Math.round(h * 0.012);
+          ctx.globalAlpha = 0.55;
+          ctx.drawImage(img, padding, padding, logoW, logoH);
+          ctx.globalAlpha = 1.0;
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = logoUrl;
+      });
+    } catch(e) {}
+  }
 
   // Timestamp elegante
   const ora = new Date();
