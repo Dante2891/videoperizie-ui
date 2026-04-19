@@ -173,6 +173,10 @@ input:focus { border-color: var(--accent); }
         <option value="pro">Pro — illimitato</option>
       </select>
     </div>
+    <div class="field">
+      <label>Logo URL (opzionale)</label>
+      <input type="text" id="f-logo" placeholder="https://studiolotti.org/videoperizie/loghi/studio.png">
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" id="btn-cancel">Annulla</button>
       <button class="btn-crea" id="btn-crea">Crea Studio →</button>
@@ -238,6 +242,11 @@ async function caricaStudi() {
           ? `<button class="btn-sm btn-sospendi" onclick="toggleStudio('${s.id}', false)">⏸ Sospendi</button>`
           : `<button class="btn-sm btn-riattiva" onclick="toggleStudio('${s.id}', true)">▶ Riattiva</button>`
         }
+        <input type="text" placeholder="URL logo" value="${s.logo_url || ''}" 
+          style="margin-top:6px;width:100%;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.75rem;outline:none;"
+          onblur="aggiornaLogo('${s.id}', this.value)"
+          onclick="this.select()"
+        >
       </td>
     </tr>`;
   }).join('');
@@ -259,6 +268,14 @@ async function toggleStudio(id, attivo) {
     body: JSON.stringify({ attivo })
   });
   await caricaStudi();
+}
+
+async function aggiornaLogo(id, logo_url) {
+  await fetch(`${SERVER}/admin/studi/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ logo_url: logo_url || null })
+  });
 }
 
 async function caricaLogs() {
@@ -309,7 +326,8 @@ document.getElementById('btn-crea').addEventListener('click', async () => {
         cognome: document.getElementById('f-cognome').value.trim(),
         email: document.getElementById('f-email').value.trim(),
         password: document.getElementById('f-password').value,
-        piano: document.getElementById('f-piano').value
+        piano: document.getElementById('f-piano').value,
+        logo_url: document.getElementById('f-logo').value.trim() || null
       })
     });
     const data = await res.json();
