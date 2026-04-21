@@ -422,9 +422,8 @@ function collegaSocket() {
     }
   });
 
-  socket.on('scatta-foto', () => {
-    mostraNotifica();
-    scattaFoto();
+  socket.on('scatta-foto', async () => {
+    await scattaFoto();
   });
 
   socket.on('peer-disconnesso', () => {
@@ -468,9 +467,24 @@ async function avviaWebRTC() {
       audio.play().catch(() => {});
     }
   };
+
+  pc.onconnectionstatechange = () => {
+    console.log('PC state:', pc.connectionState);
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      istruzione.textContent = '⚠️ Connessione instabile';
+    } else if (pc.connectionState === 'connected') {
+      istruzione.textContent = 'Tieni il telefono fermo 📷';
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log('ICE state:', pc.iceConnectionState);
+  };
 }
 
 let gpsCoords = null;
+let scattoInCorso = false;
+let ultimoScattoTs = 0;
 
 // Chiedi GPS all'avvio
 if (navigator.geolocation) {
@@ -481,73 +495,68 @@ if (navigator.geolocation) {
   );
 }
 
-function scattaFoto() {
-  const canvas = document.createElement('canvas');
-  const MAX = 1280;
-  let w = videoLocale.videoWidth;
-  let h = videoLocale.videoHeight;
-  if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(videoLocale, 0, 0, w, h);
 
-  // Timestamp elegante
-  const ora = new Date();
-  const testo = ora.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }) + 
-                '  ' + 
-                ora.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  const fontSize = Math.round(h * 0.022);
-  const padding = Math.round(h * 0.012);
-  
-  ctx.font = `bold ${fontSize}px monospace`;
-  const dataW = ctx.measureText(testo).width;
-  
-  let gps = '';
-  if (gpsCoords) gps = `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lon.toFixed(5)}`;
-  ctx.font = `${Math.round(fontSize * 0.8)}px monospace`;
-  const gpsW = gps ? ctx.measureText(gps).width : 0;
-  
-  const boxW = Math.max(dataW, gpsW) + padding * 2;
-  const boxH = gps ? fontSize * 2.4 : fontSize * 1.4;
-  const boxX = w - boxW - padding;
-  const boxY = h - boxH - padding;
-  
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(boxX, boxY, boxW, boxH);
-  
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${fontSize}px monospace`;
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
-  ctx.fillText(testo, w - padding * 2, boxY + padding * 0.8);
-  
-  if (gps) {
-    ctx.font = `${Math.round(fontSize * 0.8)}px monospace`;
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText(gps, w - padding * 2, boxY + fontSize * 1.8);
+async function scattaFoto() {
+  if (scattoInCorso) {
+    console.warn('Scatto già in corso, richiesta ignorata');
+    return;
   }
-  ctx.textAlign = 'left';
 
-  canvas.toBlob(blob => {
-    blob.arrayBuffer().then(buffer => {
-      socket.emit('foto', { 
-        token, 
-        blob: Array.from(new Uint8Array(buffer)),
-        gps: gpsCoords
-      });
+  const ora = Date.now();
+  if (ora - ultimoScattoTs < 1200) {
+    console.warn('Scatto troppo ravvicinato, richiesta ignorata');
+    return;
+  }
+
+  scattoInCorso = true;
+  ultimoScattoTs = ora;
+
+  try {
+    const blob = await acquisisciFotoRobusta();
+    const blobMarcato = await aggiungiOverlay(blob);
+    const buffer = await blobMarcato.arrayBuffer();
+
+    socket.emit('foto', {
+      token,
+      blob: Array.from(new Uint8Array(buffer)),
+      gps: gpsCoords
     });
-  }, 'image/jpeg', 0.85);
+
+    mostraNotifica();
+  } catch (err) {
+    console.error('Errore scatto foto:', err);
+    istruzione.textContent = '⚠️ Errore acquisizione foto';
+    setTimeout(() => {
+      istruzione.textContent = 'Tieni il telefono fermo 📷';
+    }, 2000);
+  } finally {
+    scattoInCorso = false;
+  }
 }
 
-function mostraNotifica() {
-  notificaFoto.style.display = 'block';
-  notificaTesto.style.display = 'block';
-  setTimeout(() => {
-    notificaFoto.style.display = 'none';
-    notificaTesto.style.display = 'none';
-  }, 600);
+async function acquisisciFotoRobusta() {
+  const track = localStream && localStream.getVideoTracks ? localStream.getVideoTracks()[0] : null;
+
+  if (track && typeof ImageCapture !== 'undefined') {
+    try {
+      const imageCapture = new ImageCapture(track);
+      return await imageCapture.takePhoto();
+    } catch (err) {
+      console.warn('ImageCapture non riuscito, uso fallback canvas:', err);
+    }
+  }
+
+  return await scattaDaCanvas();
 }
-</script>
-</body>
-</html>
+
+function scattaDaCanvas() {
+  return new Promise((resolve, reject) => {
+    try {
+      const vw = videoLocale.videoWidth;
+      const vh = videoLocale.videoHeight;
+      if (!vw || !vh) {
+        reject(new Error('Video non pronto per fallback canvas'));
+        return;
+      }
+
+      const canvas = document.cr
