@@ -659,6 +659,17 @@ function collegaSocket() {
 }
 
 async function avviaWebRTC() {
+  // Chiudi connessione precedente se esiste
+  if (pc) {
+    try {
+      pc.ontrack = null;
+      pc.onicecandidate = null;
+      pc.onconnectionstatechange = null;
+      pc.close();
+    } catch(_) {}
+    pc = null;
+  }
+
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
