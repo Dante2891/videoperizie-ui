@@ -374,52 +374,24 @@ btnAvvia.addEventListener('click', async () => {
     startVideoWatchdog();
   } catch (e) {
     console.error('Errore avvio media:', e);
-    statoAvvio.textContent = '⚠️ ' + (e.message || 'Consenti fotocamera e microfono per continuare');
+    statoAvvio.textContent = '⚠️ Consenti fotocamera e microfono per continuare';
     statoAvvio.className = 'errore';
     btnAvvia.disabled = false;
   }
 });
 
-// Prova constraint progressivamente più permissivi finché uno funziona
-async function getUserMediaConFallback() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error('Browser non supportato. Usa Chrome o Safari aggiornati.');
-  }
-
-  const tentativi = [
-    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: true },
-    { video: { facingMode: { ideal: 'environment' } }, audio: true },
-    { video: true, audio: true }
-  ];
-
-  let lastErr;
-  for (const constraints of tentativi) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      return stream;
-    } catch (e) {
-      lastErr = e;
-      console.warn('getUserMedia fallito con constraints:', JSON.stringify(constraints), '— errore:', e.name, e.message);
-    }
-  }
-
-  // Tutti i tentativi falliti: messaggio specifico per tipo di errore
-  if (lastErr?.name === 'NotAllowedError' || lastErr?.name === 'PermissionDeniedError') {
-    throw new Error('Permesso fotocamera negato. Vai nelle impostazioni del browser e consenti l\'accesso alla fotocamera, poi riprova.');
-  } else if (lastErr?.name === 'NotFoundError' || lastErr?.name === 'DevicesNotFoundError') {
-    throw new Error('Nessuna fotocamera trovata su questo dispositivo.');
-  } else if (lastErr?.name === 'NotReadableError' || lastErr?.name === 'TrackStartError') {
-    throw new Error('Fotocamera occupata da un\'altra app. Chiudi le altre app e riprova.');
-  } else if (lastErr?.name === 'OverconstrainedError') {
-    throw new Error('Fotocamera non compatibile con i requisiti richiesti.');
-  } else {
-    throw new Error('Impossibile accedere alla fotocamera: ' + (lastErr?.message || 'errore sconosciuto'));
-  }
-}
-
 async function inizializzaMedia() {
   stopStream(localStream);
-  localStream = await getUserMediaConFallback();
+
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: 'environment',
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    },
+    audio: true
+  });
+
   agganciaEventiTrack(localStream);
   videoLocale.srcObject = localStream;
   try {
@@ -621,8 +593,14 @@ async function recoverSession(reason) {
     console.warn('recoverSession start:', reason);
 
     const oldStream = localStream;
-    // Usa lo stesso fallback progressivo anche in recovery
-    const newStream = await getUserMediaConFallback();
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: true
+    });
 
     localStream = newStream;
     agganciaEventiTrack(localStream);
