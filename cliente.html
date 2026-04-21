@@ -30,8 +30,6 @@ html, body {
   color: var(--text);
   overflow: hidden;
 }
-
-/* SCHERMATA AVVIO */
 #schermata-avvio {
   height: 100%;
   display: flex;
@@ -43,8 +41,6 @@ html, body {
   background: var(--bg);
   position: relative;
 }
-
-/* Background glow */
 #schermata-avvio::before {
   content: '';
   position: absolute;
@@ -55,7 +51,6 @@ html, body {
   background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
   pointer-events: none;
 }
-
 .brand {
   font-family: var(--font-head);
   font-size: 0.7rem;
@@ -65,7 +60,6 @@ html, body {
   color: var(--muted);
   margin-bottom: 40px;
 }
-
 .hero-icon {
   width: 96px; height: 96px;
   border-radius: 24px;
@@ -81,7 +75,6 @@ html, body {
   0%,100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
-
 h1 {
   font-family: var(--font-head);
   font-size: 1.7rem;
@@ -96,8 +89,6 @@ h1 {
   margin-bottom: 36px;
   max-width: 280px;
 }
-
-/* Steps */
 .steps {
   width: 100%;
   max-width: 320px;
@@ -135,7 +126,6 @@ h1 {
   line-height: 1.4;
   padding-top: 3px;
 }
-
 #btn-avvia {
   width: 100%;
   max-width: 320px;
@@ -154,7 +144,6 @@ h1 {
 }
 #btn-avvia:active { transform: scale(0.97); }
 #btn-avvia:disabled { opacity: 0.4; }
-
 #stato-avvio {
   margin-top: 16px;
   font-size: 0.82rem;
@@ -162,15 +151,12 @@ h1 {
   min-height: 20px;
 }
 #stato-avvio.errore { color: var(--red); }
-
-/* SCHERMATA SESSIONE */
 #schermata-sessione {
   display: none;
   height: 100%;
   flex-direction: column;
   position: relative;
 }
-
 video#video-locale {
   flex: 1;
   width: 100%;
@@ -178,14 +164,11 @@ video#video-locale {
   display: block;
   background: #000;
 }
-
 .sessione-overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
-
-/* Corner decorators */
 .corner {
   position: absolute;
   width: 24px; height: 24px;
@@ -196,8 +179,6 @@ video#video-locale {
 .corner-tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; }
 .corner-bl { bottom: 80px; left: 16px; border-width: 0 0 2px 2px; }
 .corner-br { bottom: 80px; right: 16px; border-width: 0 2px 2px 0; }
-
-/* Scan line */
 .scan-line {
   position: absolute;
   left: 0; right: 0;
@@ -207,8 +188,6 @@ video#video-locale {
   animation: scan 5s linear infinite;
 }
 @keyframes scan { 0% { top: 0; } 100% { top: calc(100% - 80px); } }
-
-/* Status bar */
 #status-bar {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -240,8 +219,6 @@ video#video-locale {
   animation: pulse 1.5s infinite;
 }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-
-/* Bottom bar */
 #bottom-bar {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -255,8 +232,6 @@ video#video-locale {
   font-family: var(--font-head);
   letter-spacing: 0.05em;
 }
-
-/* NOTIFICA FOTO */
 #notifica-foto {
   display: none;
   position: fixed;
@@ -290,8 +265,6 @@ video#video-locale {
 </style>
 </head>
 <body>
-
-<!-- SCHERMATA AVVIO -->
 <div id="schermata-avvio">
   <div class="brand">Ispecto</div>
   <div class="hero-icon">
@@ -319,7 +292,6 @@ video#video-locale {
   <div id="stato-avvio">Pronto</div>
 </div>
 
-<!-- SCHERMATA SESSIONE -->
 <div id="schermata-sessione">
   <video id="video-locale" autoplay playsinline muted></video>
   <div class="sessione-overlay">
@@ -337,7 +309,6 @@ video#video-locale {
   </div>
 </div>
 
-<!-- EFFETTI FOTO -->
 <div id="notifica-foto"></div>
 <div id="notifica-testo">📸 Foto Scattata!</div>
 
@@ -355,17 +326,28 @@ const notificaFoto = document.getElementById('notifica-foto');
 const notificaTesto = document.getElementById('notifica-testo');
 const istruzione = document.getElementById('istruzione');
 
+let socket = null;
+let pc = null;
+let localStream = null;
+let remoteAudioEl = null;
+let joined = false;
+let recoveryInProgress = false;
+let recoveryTimer = null;
+let videoHealthTimer = null;
+let lastPhotoAt = 0;
+const PHOTO_COOLDOWN_MS = 1200;
+const VIDEO_WATCHDOG_MS = 4000;
+
 if (!token) {
   statoAvvio.textContent = 'Link non valido. Contatta l\'operatore.';
   statoAvvio.className = 'errore';
   btnAvvia.disabled = true;
 } else {
-  // Verifica stato perizia
   fetch(`${SERVER}/perizie/check/${token}`)
     .then(r => r.json())
     .then(data => {
       if (!data.valido) {
-        const msg = data.motivo === 'completata' ? 'Perizia terminata.' : 
+        const msg = data.motivo === 'completata' ? 'Perizia terminata.' :
                     data.motivo === 'scaduta' ? 'Link scaduto. Contatta l\'operatore.' :
                     'Link non valido.';
         statoAvvio.textContent = msg;
@@ -374,51 +356,110 @@ if (!token) {
       } else if (data.stato === 'creata') {
         statoAvvio.textContent = 'In attesa dell\'operatore...';
       }
+    })
+    .catch(() => {
+      statoAvvio.textContent = 'Impossibile verificare il link.';
+      statoAvvio.className = 'errore';
     });
 }
-
-let socket, pc, localStream;
 
 btnAvvia.addEventListener('click', async () => {
   btnAvvia.disabled = true;
   statoAvvio.textContent = 'Accesso fotocamera in corso...';
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: true
-    });
-    videoLocale.srcObject = localStream;
+    await inizializzaMedia();
     statoAvvio.textContent = 'Connessione al server...';
     collegaSocket();
-  } catch(e) {
+    startVideoWatchdog();
+  } catch (e) {
+    console.error('Errore avvio media:', e);
     statoAvvio.textContent = '⚠️ Consenti fotocamera e microfono per continuare';
     statoAvvio.className = 'errore';
     btnAvvia.disabled = false;
   }
 });
 
+async function inizializzaMedia() {
+  stopStream(localStream);
+
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: 'environment',
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    },
+    audio: true
+  });
+
+  agganciaEventiTrack(localStream);
+  videoLocale.srcObject = localStream;
+  try {
+    await videoLocale.play();
+  } catch (e) {
+    console.warn('play locale non riuscito:', e);
+  }
+}
+
 function collegaSocket() {
-  socket = io(SERVER);
+  if (socket) return;
+
+  socket = io(SERVER, {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000
+  });
 
   socket.on('connect', () => {
+    console.log('socket connesso');
     socket.emit('join-cliente', { token });
+    if (joined) {
+      istruzione.textContent = 'Connessione ripristinata';
+    }
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.warn('socket disconnesso:', reason);
+    istruzione.textContent = '⚠️ Riconnessione in corso...';
+    scheduleRecovery('socket-disconnect', 700);
+  });
+
+  socket.on('connect_error', (err) => {
+    console.warn('socket connect_error:', err?.message || err);
+    istruzione.textContent = '⚠️ Problemi di rete, riprovo...';
   });
 
   socket.on('joined', () => {
+    joined = true;
     schermataAvvio.style.display = 'none';
     schermataSessione.style.display = 'flex';
+    istruzione.textContent = 'Tieni il telefono fermo 📷';
   });
 
   socket.on('segnale', async ({ data }) => {
-    if (!pc) await avviaWebRTC();
-    if (data.type === 'offer') {
-      await pc.setRemoteDescription(data);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.emit('segnale', { token, data: answer });
-    } else if (data.candidate) {
-      await pc.addIceCandidate(data);
+    try {
+      if (!pc || pc.connectionState === 'closed') await avviaWebRTC();
+
+      if (data.type === 'offer') {
+        if (pc.signalingState !== 'stable') {
+          try { await pc.setLocalDescription({ type: 'rollback' }); } catch (_) {}
+        }
+        await pc.setRemoteDescription(data);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit('segnale', { token, data: answer });
+      } else if (data.candidate) {
+        try {
+          await pc.addIceCandidate(data);
+        } catch (e) {
+          console.warn('ICE candidate scartato:', e);
+        }
+      }
+    } catch (e) {
+      console.error('Errore segnale:', e);
+      scheduleRecovery('signal-error', 500);
     }
   });
 
@@ -430,7 +471,10 @@ function collegaSocket() {
   socket.on('peer-disconnesso', () => {
     istruzione.textContent = '⚠️ Operatore disconnesso';
   });
+
   socket.on('sessione-terminata', () => {
+    cleanupPeer();
+    stopVideoWatchdog();
     schermataSessione.style.display = 'none';
     schermataAvvio.style.display = 'flex';
     statoAvvio.textContent = 'Perizia terminata. Grazie!';
@@ -448,6 +492,8 @@ function collegaSocket() {
 }
 
 async function avviaWebRTC() {
+  cleanupPeer();
+
   pc = new RTCPeerConnection({
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -458,70 +504,241 @@ async function avviaWebRTC() {
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
   pc.onicecandidate = (e) => {
-    if (e.candidate) socket.emit('segnale', { token, data: e.candidate });
+    if (e.candidate && socket?.connected) {
+      socket.emit('segnale', { token, data: e.candidate });
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log('ice state:', pc.iceConnectionState);
+    if (['failed', 'disconnected'].includes(pc.iceConnectionState)) {
+      scheduleRecovery(`ice-${pc.iceConnectionState}`, 600);
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log('pc state:', pc.connectionState);
+    if (['failed', 'disconnected'].includes(pc.connectionState)) {
+      scheduleRecovery(`pc-${pc.connectionState}`, 600);
+    }
+  };
+
+  pc.onsignalingstatechange = () => {
+    console.log('signaling state:', pc.signalingState);
   };
 
   pc.ontrack = (e) => {
     if (e.streams && e.streams[0]) {
-      const audio = new Audio();
-      audio.srcObject = e.streams[0];
-      audio.play().catch(() => {});
+      if (!remoteAudioEl) {
+        remoteAudioEl = new Audio();
+        remoteAudioEl.autoplay = true;
+      }
+      if (remoteAudioEl.srcObject !== e.streams[0]) {
+        remoteAudioEl.srcObject = e.streams[0];
+      }
+      remoteAudioEl.play().catch(err => console.warn('audio play error:', err));
     }
   };
 }
 
-let gpsCoords = null;
+function cleanupPeer() {
+  if (pc) {
+    try {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.oniceconnectionstatechange = null;
+      pc.onsignalingstatechange = null;
+      pc.close();
+    } catch (_) {}
+    pc = null;
+  }
+}
 
-// Chiedi GPS all'avvio
+function stopStream(stream) {
+  if (!stream) return;
+  stream.getTracks().forEach(track => {
+    try { track.stop(); } catch (_) {}
+  });
+}
+
+function agganciaEventiTrack(stream) {
+  stream.getTracks().forEach(track => {
+    track.onended = () => {
+      console.warn('track ended:', track.kind);
+      scheduleRecovery(`track-ended-${track.kind}`, 400);
+    };
+    track.onmute = () => {
+      console.warn('track mute:', track.kind);
+      scheduleRecovery(`track-mute-${track.kind}`, 500);
+    };
+    track.onunmute = () => {
+      console.log('track unmute:', track.kind);
+    };
+  });
+}
+
+function scheduleRecovery(reason, delay = 500) {
+  console.warn('scheduleRecovery:', reason);
+  if (recoveryTimer) clearTimeout(recoveryTimer);
+  recoveryTimer = setTimeout(() => recoverSession(reason), delay);
+}
+
+async function recoverSession(reason) {
+  if (recoveryInProgress) return;
+  recoveryInProgress = true;
+
+  try {
+    istruzione.textContent = '⚠️ Ripristino video in corso...';
+    console.warn('recoverSession start:', reason);
+
+    const oldStream = localStream;
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: true
+    });
+
+    localStream = newStream;
+    agganciaEventiTrack(localStream);
+    videoLocale.srcObject = localStream;
+    try {
+      await videoLocale.play();
+    } catch (e) {
+      console.warn('play locale recovery non riuscito:', e);
+    }
+
+    if (pc && pc.connectionState !== 'closed') {
+      const senders = pc.getSenders();
+      const newVideoTrack = localStream.getVideoTracks()[0];
+      const newAudioTrack = localStream.getAudioTracks()[0];
+
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+      const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+
+      if (videoSender && newVideoTrack) await videoSender.replaceTrack(newVideoTrack);
+      if (audioSender && newAudioTrack) await audioSender.replaceTrack(newAudioTrack);
+    } else if (socket?.connected) {
+      socket.emit('join-cliente', { token });
+    }
+
+    stopStream(oldStream);
+
+    if (socket?.connected) {
+      socket.emit('join-cliente', { token });
+    }
+
+    istruzione.textContent = 'Video ripristinato 📷';
+    setTimeout(() => {
+      if (istruzione.textContent === 'Video ripristinato 📷') {
+        istruzione.textContent = 'Tieni il telefono fermo 📷';
+      }
+    }, 1500);
+  } catch (e) {
+    console.error('recoverSession fallita:', e);
+    istruzione.textContent = '⚠️ Riconnessione video in corso...';
+    cleanupPeer();
+    if (socket?.connected) {
+      socket.emit('join-cliente', { token });
+    }
+  } finally {
+    recoveryInProgress = false;
+  }
+}
+
+function startVideoWatchdog() {
+  stopVideoWatchdog();
+  videoHealthTimer = setInterval(() => {
+    if (!joined || recoveryInProgress) return;
+    if (!videoLocale.srcObject) {
+      scheduleRecovery('video-no-srcobject', 300);
+      return;
+    }
+    const vt = localStream?.getVideoTracks?.()[0];
+    if (!vt || vt.readyState !== 'live' || vt.muted) {
+      scheduleRecovery('video-track-not-live', 300);
+      return;
+    }
+    if (videoLocale.readyState < 2 || videoLocale.videoWidth === 0 || videoLocale.videoHeight === 0) {
+      scheduleRecovery('video-element-empty', 300);
+    }
+  }, VIDEO_WATCHDOG_MS);
+}
+
+function stopVideoWatchdog() {
+  if (videoHealthTimer) {
+    clearInterval(videoHealthTimer);
+    videoHealthTimer = null;
+  }
+}
+
+let gpsCoords = null;
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
     pos => { gpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy }; },
-    err => { gpsCoords = null; },
+    () => { gpsCoords = null; },
     { enableHighAccuracy: true }
   );
 }
 
 function scattaFoto() {
+  const now = Date.now();
+  if (now - lastPhotoAt < PHOTO_COOLDOWN_MS) {
+    console.warn('Scatto ignorato: troppo ravvicinato');
+    return;
+  }
+  lastPhotoAt = now;
+
+  const w0 = videoLocale.videoWidth;
+  const h0 = videoLocale.videoHeight;
+  if (!w0 || !h0) {
+    console.warn('Video non pronto, provo recovery');
+    scheduleRecovery('photo-video-not-ready', 250);
+    return;
+  }
+
   const canvas = document.createElement('canvas');
   const MAX = 1280;
-  let w = videoLocale.videoWidth;
-  let h = videoLocale.videoHeight;
+  let w = w0;
+  let h = h0;
   if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(videoLocale, 0, 0, w, h);
 
-  // Timestamp elegante
   const ora = new Date();
-  const testo = ora.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }) + 
-                '  ' + 
+  const testo = ora.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' }) +
+                '  ' +
                 ora.toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
   const fontSize = Math.round(h * 0.022);
   const padding = Math.round(h * 0.012);
-  
+
   ctx.font = `bold ${fontSize}px monospace`;
   const dataW = ctx.measureText(testo).width;
-  
+
   let gps = '';
   if (gpsCoords) gps = `GPS: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lon.toFixed(5)}`;
   ctx.font = `${Math.round(fontSize * 0.8)}px monospace`;
   const gpsW = gps ? ctx.measureText(gps).width : 0;
-  
+
   const boxW = Math.max(dataW, gpsW) + padding * 2;
   const boxH = gps ? fontSize * 2.4 : fontSize * 1.4;
   const boxX = w - boxW - padding;
   const boxY = h - boxH - padding;
-  
+
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
-  
+
   ctx.fillStyle = '#ffffff';
   ctx.font = `bold ${fontSize}px monospace`;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'top';
   ctx.fillText(testo, w - padding * 2, boxY + padding * 0.8);
-  
+
   if (gps) {
     ctx.font = `${Math.round(fontSize * 0.8)}px monospace`;
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
@@ -530,13 +747,14 @@ function scattaFoto() {
   ctx.textAlign = 'left';
 
   canvas.toBlob(blob => {
+    if (!blob) return;
     blob.arrayBuffer().then(buffer => {
-      socket.emit('foto', { 
-        token, 
+      socket?.emit('foto', {
+        token,
         blob: Array.from(new Uint8Array(buffer)),
         gps: gpsCoords
       });
-    });
+    }).catch(err => console.error('Errore invio foto:', err));
   }, 'image/jpeg', 0.85);
 }
 
@@ -548,6 +766,14 @@ function mostraNotifica() {
     notificaTesto.style.display = 'none';
   }, 600);
 }
+
+window.addEventListener('online', () => scheduleRecovery('browser-online', 300));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) scheduleRecovery('visibility-return', 300);
+});
+window.addEventListener('pagehide', () => console.warn('pagehide'));
+window.addEventListener('error', e => console.error('JS ERROR:', e.message, e.error));
+window.addEventListener('unhandledrejection', e => console.error('PROMISE ERROR:', e.reason));
 </script>
 </body>
 </html>
