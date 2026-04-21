@@ -630,6 +630,8 @@ function collegaSocket() {
     btnFoto.disabled = false;
     recIndicator.classList.add('visible');
     await aggiornaStato('in_corso');
+    // Piccolo delay per evitare race condition con recovery
+    await new Promise(r => setTimeout(r, 300));
     await avviaWebRTC();
   });
 
