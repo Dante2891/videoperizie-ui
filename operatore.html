@@ -457,6 +457,7 @@ if (!token || !vp_token) window.location.href = 'dashboard.html';
 
 let socket, pc, cartella, fotoCount = 0;
 let localStream;
+let remoteStream = null;
 
 const statoEl = document.getElementById('stato');
 const linkBox = document.getElementById('link-box');
@@ -630,8 +631,6 @@ function collegaSocket() {
     btnFoto.disabled = false;
     recIndicator.classList.add('visible');
     await aggiornaStato('in_corso');
-    // Piccolo delay per evitare race condition con recovery
-    await new Promise(r => setTimeout(r, 300));
     await avviaWebRTC();
   });
 
@@ -656,22 +655,12 @@ function collegaSocket() {
     placeholder.style.display = 'flex';
     videoArea.classList.remove('active');
     recIndicator.classList.remove('visible');
+    remoteStream = null;
     log('Cliente disconnesso');
   });
 }
 
 async function avviaWebRTC() {
-  // Chiudi connessione precedente se esiste
-  if (pc) {
-    try {
-      pc.ontrack = null;
-      pc.onicecandidate = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
-    } catch(_) {}
-    pc = null;
-  }
-
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
@@ -689,14 +678,23 @@ async function avviaWebRTC() {
 
   pc.addTransceiver('video', { direction: 'recvonly' });
 
+  // Reset remoteStream per nuova connessione
+  remoteStream = null;
+
+  videoRemoto.onloadedmetadata = () => {
+    videoRemoto.play().catch(() => {});
+  };
+
   pc.ontrack = (e) => {
-    if (e.streams && e.streams[0]) {
-      videoRemoto.srcObject = e.streams[0];
-      placeholder.style.display = 'none';
-      videoArea.classList.add('active');
-      log('Track ricevuto: ' + e.track.kind);
-      if (videoRemoto.paused) videoRemoto.play().catch(err => log('Play error: ' + err));
-    }
+    if (!e.streams || !e.streams[0]) return;
+    const incoming = e.streams[0];
+    if (remoteStream === incoming) return;
+    remoteStream = incoming;
+    videoRemoto.srcObject = remoteStream;
+    placeholder.style.display = 'none';
+    videoArea.classList.add('active');
+    log('Track ricevuto: ' + e.track.kind);
+    videoRemoto.play().catch(() => {});
   };
 
   pc.onicecandidate = (e) => {
