@@ -334,6 +334,10 @@ input:focus { border-color: var(--accent); }
       <label>Telefono Cliente</label>
       <input type="tel" id="f-telefono" placeholder="+39 333 1234567">
     </div>
+    <div class="field">
+      <label>Email Cliente (opzionale)</label>
+      <input type="email" id="f-email-cliente" placeholder="mario.rossi@email.it">
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" id="btn-cancel">Annulla</button>
       <button class="btn-crea" id="btn-crea">Crea e Avvia →</button>
@@ -506,7 +510,7 @@ function renderPerizie(perizie) {
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
         <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
-        ${p.stato !== 'completata' ? `<button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}', '${p.riferimento || ''}')">▶ Avvia</button>` : ''}
+        ${p.stato !== 'completata' ? `<button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}', '${p.riferimento || ''}', '${p.email_cliente || ''}')">▶ Avvia</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -550,13 +554,13 @@ document.getElementById('btn-crea').addEventListener('click', async () => {
     const res = await fetch(`${SERVER}/perizie`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ nome_cliente: nome, cognome_cliente: cognome, riferimento, telefono_cliente: telefono })
+      body: JSON.stringify({ nome_cliente: nome, cognome_cliente: cognome, riferimento, telefono_cliente: telefono, email_cliente: document.getElementById('f-email-cliente').value.trim() || null })
     });
     const perizia = await res.json();
     document.getElementById('modal').classList.remove('visible');
     resetForm();
     await caricaPerizie();
-    avviaPerizia(perizia.token_sessione, perizia.id, perizia.telefono_cliente, `${perizia.nome_cliente} ${perizia.cognome_cliente}`, perizia.riferimento || '');
+    avviaPerizia(perizia.token_sessione, perizia.id, perizia.telefono_cliente, `${perizia.nome_cliente} ${perizia.cognome_cliente}`, perizia.riferimento || '', perizia.email_cliente || '');
   } catch(e) {
     alert('Errore nella creazione');
   } finally {
@@ -566,13 +570,13 @@ document.getElementById('btn-crea').addEventListener('click', async () => {
 });
 
 function resetForm() {
-  ['f-nome','f-cognome','f-riferimento','f-telefono'].forEach(id => document.getElementById(id).value = '');
+  ['f-nome','f-cognome','f-riferimento','f-telefono','f-email-cliente'].forEach(id => document.getElementById(id).value = '');
 }
 
-function avviaPerizia(tokenSessione, perizia_id, telefono, nome, riferimento) {
+function avviaPerizia(tokenSessione, perizia_id, telefono, nome, riferimento, email) {
   localStorage.setItem('vp_perizia_id', perizia_id);
   localStorage.setItem('vp_riferimento', riferimento || '');
-  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}&riferimento=${encodeURIComponent(riferimento || '')}`;
+  window.location.href = `operatore.html?token=${tokenSessione}&perizia_id=${perizia_id}&telefono=${encodeURIComponent(telefono)}&nome=${encodeURIComponent(nome)}&riferimento=${encodeURIComponent(riferimento || '')}&email=${encodeURIComponent(email || '')}`;
 }
 
 caricaPerizie();
@@ -693,17 +697,4 @@ document.getElementById('btn-salva-pwd').addEventListener('click', async () => {
     });
     const data = await res.json();
     if (data.ok) {
-      document.getElementById('modal-password').classList.remove('visible');
-      alert('Password aggiornata!');
-    } else {
-      errEl.textContent = data.errore || 'Errore';
-      errEl.style.display = 'block';
-    }
-  } catch(e) { errEl.textContent = 'Errore di connessione'; errEl.style.display = 'block'; }
-  finally { btn.disabled = false; btn.textContent = 'Salva Password →'; }
-});
-
-</script>
-
-
-</html>
+      document.getElementById('modal-password')
