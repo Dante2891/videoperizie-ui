@@ -417,6 +417,7 @@ main {
       <button class="btn btn-primary" id="btn-nuova">＋ Nuova Sessione</button>
       <button class="btn btn-secondary" id="btn-copia" disabled>📋 Copia Link Cliente</button>
       <button class="btn btn-wa" id="btn-wa">📲 Invia su WhatsApp</button>
+      <button class="btn btn-secondary" id="btn-email" style="display:none;background:rgba(59,130,246,0.1);color:var(--accent2);border-color:rgba(59,130,246,0.2);">📧 Invia Link Email</button>
       
     </div>
 
@@ -449,30 +450,13 @@ const perizia_id = params.get('perizia_id');
 const telefono_cliente = params.get('telefono');
 const nome_cliente = params.get('nome');
 const riferimento = params.get('riferimento') || localStorage.getItem('vp_riferimento') || '';
+const email_cliente = params.get('email') || '';
 const vp_token = localStorage.getItem('vp_token');
 
 if (!token || !vp_token) window.location.href = 'dashboard.html';
 
 let socket, pc, cartella, fotoCount = 0;
 let localStream;
-let logoImg = null;
-
-// Carica logo studio all'avvio
-(async () => {
-  try {
-    const res = await fetch(`${SERVER}/studio/logo`, {
-      headers: { 'Authorization': `Bearer ${vp_token}` }
-    });
-    const data = await res.json();
-    if (data.logo_url) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => { logoImg = img; log('Logo studio caricato'); };
-      img.onerror = () => { logoImg = null; };
-      img.src = data.logo_url;
-    }
-  } catch(e) { logoImg = null; }
-})();
 
 const statoEl = document.getElementById('stato');
 const linkBox = document.getElementById('link-box');
@@ -576,6 +560,25 @@ btnCopia.addEventListener('click', () => {
   setTimeout(() => { btnCopia.textContent = '📋 Copia Link Cliente'; }, 2000);
   log('Link copiato!');
 });
+
+// Pulsante reinvia email
+const btnEmail = document.getElementById('btn-email');
+if (btnEmail) {
+  if (email_cliente) {
+    btnEmail.style.display = 'flex';
+    btnEmail.addEventListener('click', async () => {
+      try {
+        const res = await fetch(`${SERVER}/perizie/${perizia_id}/invia-email`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${vp_token}` }
+        });
+        const data = await res.json();
+        if (data.ok) { btnEmail.textContent = '✅ Email Inviata!'; setTimeout(() => { btnEmail.textContent = '📧 Invia Link Email'; }, 3000); }
+        else log('Errore invio email: ' + (data.errore || 'sconosciuto'));
+      } catch(e) { log('Errore connessione'); }
+    });
+  }
+}
 
 document.getElementById('btn-wa').addEventListener('click', () => {
   let tel = (telefono_cliente || '').replace(/\s/g, '').replace(/[^\d]/g, '');
@@ -699,27 +702,7 @@ async function salvaFoto(blobData) {
   const ref = riferimento ? riferimento.replace(/[^a-zA-Z0-9]/g, '_') : 'perizia';
   const nomeFile = `${ref}_${timestamp}_${ora}_${String(fotoCount).padStart(3,'0')}.jpg`;
   const byteArr = new Uint8Array(blobData);
-  let blob = new Blob([byteArr], { type: 'image/jpeg' });
-
-  // Sovrapponi logo se disponibile
-  if (logoImg) {
-    try {
-      const bmp = await createImageBitmap(blob);
-      const canvas = document.createElement('canvas');
-      canvas.width = bmp.width;
-      canvas.height = bmp.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(bmp, 0, 0);
-      const maxH = Math.round(bmp.height * 0.08);
-      const logoW = Math.round(maxH * (logoImg.width / logoImg.height));
-      const padding = Math.round(bmp.height * 0.012);
-      ctx.globalAlpha = 0.55;
-      ctx.drawImage(logoImg, padding, padding, logoW, maxH);
-      ctx.globalAlpha = 1.0;
-      blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
-    } catch(e) { log('Logo non applicato: ' + e.message); }
-  }
-
+  const blob = new Blob([byteArr], { type: 'image/jpeg' });
   const url = URL.createObjectURL(blob);
 
   const item = document.createElement('div');
