@@ -684,6 +684,22 @@ if (navigator.geolocation) {
   );
 }
 
+let lastPhotoTime = 0;
+let slowConnectionCount = 0;
+
+function getQualitySettings() {
+  // Controlla navigator.connection se disponibile
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    const tipo = conn.effectiveType;
+    if (tipo === 'slow-2g' || tipo === '2g') return { max: 640, quality: 0.5 };
+    if (tipo === '3g') return { max: 960, quality: 0.65 };
+  }
+  // Fallback: misura velocità basata su scatti precedenti
+  if (slowConnectionCount >= 2) return { max: 800, quality: 0.6 };
+  return { max: 1280, quality: 0.85 };
+}
+
 function scattaFoto() {
   const now = Date.now();
   if (now - lastPhotoAt < PHOTO_COOLDOWN_MS) {
@@ -701,7 +717,7 @@ function scattaFoto() {
   }
 
   const canvas = document.createElement('canvas');
-  const MAX = 1280;
+  const { max: MAX, quality: QUALITY } = getQualitySettings();
   let w = w0;
   let h = h0;
   if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
@@ -748,14 +764,19 @@ function scattaFoto() {
 
   canvas.toBlob(blob => {
     if (!blob) return;
+    const sendStart = Date.now();
     blob.arrayBuffer().then(buffer => {
       socket?.emit('foto', {
         token,
         blob: Array.from(new Uint8Array(buffer)),
         gps: gpsCoords
       });
+      // Misura tempo invio per prossimo scatto
+      const elapsed = Date.now() - sendStart;
+      if (elapsed > 3000) slowConnectionCount = Math.min(slowConnectionCount + 1, 3);
+      else slowConnectionCount = Math.max(slowConnectionCount - 1, 0);
     }).catch(err => console.error('Errore invio foto:', err));
-  }, 'image/jpeg', 0.85);
+  }, 'image/jpeg', QUALITY);
 }
 
 function mostraNotifica() {
