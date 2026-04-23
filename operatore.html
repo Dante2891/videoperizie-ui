@@ -664,7 +664,7 @@ function collegaSocket() {
   });
 
   socket.on('peer-disconnesso', () => {
-    setStato('Cliente disconnesso', 'errore');
+    setStato('Connessione instabile...', 'attesa');
     btnFoto.disabled = true;
     placeholder.style.display = 'flex';
     videoArea.classList.remove('active');
