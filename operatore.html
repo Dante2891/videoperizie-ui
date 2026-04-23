@@ -588,8 +588,12 @@ document.getElementById('btn-wa').addEventListener('click', () => {
   window.open(`https://wa.me/${tel || ''}?text=${msg}`, '_blank');
 });
 
+let fotoInCorso = false;
+
 btnFoto.addEventListener('click', () => {
-  if (socket && token) {
+  if (socket && token && !fotoInCorso) {
+    fotoInCorso = true;
+    btnFoto.disabled = true;
     socket.emit('scatta-foto', { token });
     flashEffect();
     log('Comando foto inviato');
@@ -648,6 +652,8 @@ function collegaSocket() {
     fotoCount++;
     log(`Foto ricevuta! (${fotoCount})`);
     await salvaFoto(blob);
+    fotoInCorso = false;
+    btnFoto.disabled = false;
   });
 
   socket.on('peer-disconnesso', () => {
