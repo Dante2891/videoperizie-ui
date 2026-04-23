@@ -597,8 +597,15 @@ btnFoto.addEventListener('click', () => {
     socket.emit('scatta-foto', { token });
     flashEffect();
     log('Comando foto inviato');
+    // Timeout sicurezza: riabilita dopo 8 secondi se la foto non arriva
+    setTimeout(() => {
+      if (fotoInCorso) {
+        fotoInCorso = false;
+        btnFoto.disabled = false;
+        log('⚠️ Timeout foto — riprova');
+      }
+    }, 6000);
   }
-});
 
 // Bottone termina sessione
 document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
