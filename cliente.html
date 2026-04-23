@@ -336,7 +336,7 @@ let recoveryTimer = null;
 let videoHealthTimer = null;
 let lastPhotoAt = 0;
 const PHOTO_COOLDOWN_MS = 1200;
-const VIDEO_WATCHDOG_MS = 4000;
+const VIDEO_WATCHDOG_MS = 8000;
 
 if (!token) {
   statoAvvio.textContent = 'Link non valido. Contatta l\'operatore.';
@@ -386,8 +386,8 @@ async function inizializzaMedia() {
   localStream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: 'environment',
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
     },
     audio: true
   });
@@ -423,7 +423,7 @@ function collegaSocket() {
   socket.on('disconnect', (reason) => {
     console.warn('socket disconnesso:', reason);
     istruzione.textContent = '⚠️ Riconnessione in corso...';
-    scheduleRecovery('socket-disconnect', 700);
+    scheduleRecovery('socket-disconnect', 1500);
   });
 
   socket.on('connect_error', (err) => {
@@ -459,7 +459,7 @@ function collegaSocket() {
       }
     } catch (e) {
       console.error('Errore segnale:', e);
-      scheduleRecovery('signal-error', 500);
+      scheduleRecovery('signal-error', 1000);
     }
   });
 
@@ -512,14 +512,14 @@ async function avviaWebRTC() {
   pc.oniceconnectionstatechange = () => {
     console.log('ice state:', pc.iceConnectionState);
     if (['failed', 'disconnected'].includes(pc.iceConnectionState)) {
-      scheduleRecovery(`ice-${pc.iceConnectionState}`, 600);
+      scheduleRecovery(`ice-${pc.iceConnectionState}`, 1200);
     }
   };
 
   pc.onconnectionstatechange = () => {
     console.log('pc state:', pc.connectionState);
     if (['failed', 'disconnected'].includes(pc.connectionState)) {
-      scheduleRecovery(`pc-${pc.connectionState}`, 600);
+      scheduleRecovery(`pc-${pc.connectionState}`, 1200);
     }
   };
 
@@ -566,11 +566,11 @@ function agganciaEventiTrack(stream) {
   stream.getTracks().forEach(track => {
     track.onended = () => {
       console.warn('track ended:', track.kind);
-      scheduleRecovery(`track-ended-${track.kind}`, 400);
+      scheduleRecovery(`track-ended-${track.kind}`, 800);
     };
     track.onmute = () => {
       console.warn('track mute:', track.kind);
-      scheduleRecovery(`track-mute-${track.kind}`, 500);
+      scheduleRecovery(`track-mute-${track.kind}`, 1000);
     };
     track.onunmute = () => {
       console.log('track unmute:', track.kind);
@@ -596,8 +596,8 @@ async function recoverSession(reason) {
     const newStream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: 'environment',
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
       },
       audio: true
     });
@@ -654,16 +654,16 @@ function startVideoWatchdog() {
   videoHealthTimer = setInterval(() => {
     if (!joined || recoveryInProgress) return;
     if (!videoLocale.srcObject) {
-      scheduleRecovery('video-no-srcobject', 300);
+      scheduleRecovery('video-no-srcobject', 600);
       return;
     }
     const vt = localStream?.getVideoTracks?.()[0];
     if (!vt || vt.readyState !== 'live' || vt.muted) {
-      scheduleRecovery('video-track-not-live', 300);
+      scheduleRecovery('video-track-not-live', 600);
       return;
     }
     if (videoLocale.readyState < 2 || videoLocale.videoWidth === 0 || videoLocale.videoHeight === 0) {
-      scheduleRecovery('video-element-empty', 300);
+      scheduleRecovery('video-element-empty', 600);
     }
   }, VIDEO_WATCHDOG_MS);
 }
@@ -767,9 +767,9 @@ function mostraNotifica() {
   }, 600);
 }
 
-window.addEventListener('online', () => scheduleRecovery('browser-online', 300));
+window.addEventListener('online', () => scheduleRecovery('browser-online', 800));
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) scheduleRecovery('visibility-return', 300);
+  if (!document.hidden) scheduleRecovery('visibility-return', 800);
 });
 window.addEventListener('pagehide', () => console.warn('pagehide'));
 window.addEventListener('error', e => console.error('JS ERROR:', e.message, e.error));
