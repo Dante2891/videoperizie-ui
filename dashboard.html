@@ -337,6 +337,7 @@ input:focus { border-color: var(--accent); }
     <div class="field">
       <label>Email Cliente (opzionale)</label>
       <input type="email" id="f-email-cliente" placeholder="mario.rossi@email.it">
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">📧 Se inserita, il link verrà inviato automaticamente al cliente via email</div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" id="btn-cancel">Annulla</button>
@@ -697,4 +698,17 @@ document.getElementById('btn-salva-pwd').addEventListener('click', async () => {
     });
     const data = await res.json();
     if (data.ok) {
-      document.getElementById('modal-password')
+      document.getElementById('modal-password').classList.remove('visible');
+      alert('Password aggiornata!');
+    } else {
+      errEl.textContent = data.errore || 'Errore';
+      errEl.style.display = 'block';
+    }
+  } catch(e) { errEl.textContent = 'Errore di connessione'; errEl.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Salva Password →'; }
+});
+
+</script>
+
+
+</html>
