@@ -417,7 +417,6 @@ main {
       <button class="btn btn-primary" id="btn-nuova">＋ Nuova Sessione</button>
       <button class="btn btn-secondary" id="btn-copia" disabled>📋 Copia Link Cliente</button>
       <button class="btn btn-wa" id="btn-wa">📲 Invia su WhatsApp</button>
-      <button class="btn btn-secondary" id="btn-email" style="display:none;background:rgba(59,130,246,0.1);color:var(--accent2);border-color:rgba(59,130,246,0.2);">📧 Invia Link Email</button>
       
     </div>
 
@@ -450,7 +449,6 @@ const perizia_id = params.get('perizia_id');
 const telefono_cliente = params.get('telefono');
 const nome_cliente = params.get('nome');
 const riferimento = params.get('riferimento') || localStorage.getItem('vp_riferimento') || '';
-const email_cliente = params.get('email') || '';
 const vp_token = localStorage.getItem('vp_token');
 
 if (!token || !vp_token) window.location.href = 'dashboard.html';
@@ -561,25 +559,6 @@ btnCopia.addEventListener('click', () => {
   log('Link copiato!');
 });
 
-// Pulsante reinvia email
-const btnEmail = document.getElementById('btn-email');
-if (btnEmail) {
-  if (email_cliente) {
-    btnEmail.style.display = 'flex';
-    btnEmail.addEventListener('click', async () => {
-      try {
-        const res = await fetch(`${SERVER}/perizie/${perizia_id}/invia-email`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${vp_token}` }
-        });
-        const data = await res.json();
-        if (data.ok) { btnEmail.textContent = '✅ Email Inviata!'; setTimeout(() => { btnEmail.textContent = '📧 Invia Link Email'; }, 3000); }
-        else log('Errore invio email: ' + (data.errore || 'sconosciuto'));
-      } catch(e) { log('Errore connessione'); }
-    });
-  }
-}
-
 document.getElementById('btn-wa').addEventListener('click', () => {
   let tel = (telefono_cliente || '').replace(/\s/g, '').replace(/[^\d]/g, '');
   if (tel.startsWith('0')) tel = '39' + tel.slice(1);
@@ -588,24 +567,13 @@ document.getElementById('btn-wa').addEventListener('click', () => {
   window.open(`https://wa.me/${tel || ''}?text=${msg}`, '_blank');
 });
 
-let fotoInCorso = false;
-
 btnFoto.addEventListener('click', () => {
-  if (socket && token && !fotoInCorso) {
-    fotoInCorso = true;
-    btnFoto.disabled = true;
+  if (socket && token) {
     socket.emit('scatta-foto', { token });
     flashEffect();
     log('Comando foto inviato');
-    // Timeout sicurezza: riabilita dopo 8 secondi se la foto non arriva
-    setTimeout(() => {
-      if (fotoInCorso) {
-        fotoInCorso = false;
-        btnFoto.disabled = false;
-        log('⚠️ Timeout foto — riprova');
-      }
-    }, 6000);
   }
+});
 
 // Bottone termina sessione
 document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
@@ -641,8 +609,6 @@ function collegaSocket() {
     btnFoto.disabled = false;
     recIndicator.classList.add('visible');
     await aggiornaStato('in_corso');
-    // Piccolo delay per evitare race condition con recovery
-    await new Promise(r => setTimeout(r, 300));
     await avviaWebRTC();
   });
 
@@ -659,12 +625,10 @@ function collegaSocket() {
     fotoCount++;
     log(`Foto ricevuta! (${fotoCount})`);
     await salvaFoto(blob);
-    fotoInCorso = false;
-    btnFoto.disabled = false;
   });
 
   socket.on('peer-disconnesso', () => {
-    setStato('Connessione instabile...', 'attesa');
+    setStato('Cliente disconnesso', 'errore');
     btnFoto.disabled = true;
     placeholder.style.display = 'flex';
     videoArea.classList.remove('active');
@@ -674,17 +638,6 @@ function collegaSocket() {
 }
 
 async function avviaWebRTC() {
-  // Chiudi connessione precedente se esiste
-  if (pc) {
-    try {
-      pc.ontrack = null;
-      pc.onicecandidate = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
-    } catch(_) {}
-    pc = null;
-  }
-
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
