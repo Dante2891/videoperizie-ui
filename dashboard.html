@@ -558,6 +558,10 @@ document.getElementById('btn-crea').addEventListener('click', async () => {
       body: JSON.stringify({ nome_cliente: nome, cognome_cliente: cognome, riferimento, telefono_cliente: telefono, email_cliente: document.getElementById('f-email-cliente').value.trim() || null })
     });
     const perizia = await res.json();
+    if (!res.ok) {
+      alert(perizia.errore || 'Errore nella creazione');
+      return;
+    }
     document.getElementById('modal').classList.remove('visible');
     resetForm();
     await caricaPerizie();
