@@ -329,6 +329,10 @@ const istruzione = document.getElementById('istruzione');
 let socket = null;
 let pc = null;
 let localStream = null;
+let iceServers = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+];
 let remoteAudioEl = null;
 let joined = false;
 let recoveryInProgress = false;
@@ -368,6 +372,13 @@ btnAvvia.addEventListener('click', async () => {
   statoAvvio.textContent = 'Accesso fotocamera in corso...';
 
   try {
+    // Carica ICE servers Twilio
+    try {
+      const iceRes = await fetch(`${SERVER}/ice-servers-public/${token}`);
+      const iceData = await iceRes.json();
+      if (iceData.iceServers) iceServers = iceData.iceServers;
+    } catch(e) { /* fallback STUN */ }
+
     await inizializzaMedia();
     statoAvvio.textContent = 'Connessione al server...';
     collegaSocket();
@@ -494,12 +505,7 @@ function collegaSocket() {
 async function avviaWebRTC() {
   cleanupPeer();
 
-  pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
-  });
+  pc = new RTCPeerConnection({ iceServers });
 
   localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
