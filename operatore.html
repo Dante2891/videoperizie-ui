@@ -455,6 +455,21 @@ if (!token || !vp_token) window.location.href = 'dashboard.html';
 
 let socket, pc, cartella, fotoCount = 0;
 let localStream;
+let iceServers = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+];
+
+// Carica ICE servers Twilio
+(async () => {
+  try {
+    const res = await fetch(`${SERVER}/ice-servers`, {
+      headers: { 'Authorization': `Bearer ${vp_token}` }
+    });
+    const data = await res.json();
+    if (data.iceServers) { iceServers = data.iceServers; log('🔒 TURN Twilio attivo'); }
+  } catch(e) { log('STUN fallback attivo'); }
+})();
 
 const statoEl = document.getElementById('stato');
 const linkBox = document.getElementById('link-box');
@@ -658,10 +673,7 @@ async function avviaWebRTC() {
   }
 
   pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+    iceServers: iceServers
   });
 
   if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
