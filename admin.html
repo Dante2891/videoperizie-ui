@@ -242,6 +242,7 @@ async function caricaStudi() {
           ? `<button class="btn-sm btn-sospendi" onclick="toggleStudio('${s.id}', false)">⏸ Sospendi</button>`
           : `<button class="btn-sm btn-riattiva" onclick="toggleStudio('${s.id}', true)">▶ Riattiva</button>`
         }
+        <button class="btn-sm" style="background:rgba(245,158,11,0.1);color:var(--orange);border:1px solid rgba(245,158,11,0.2);margin-top:4px;" onclick="azzeraToken('${s.id}', '${s.nome}')">🔄 Azzera usati</button>
         <input type="number" placeholder="Token" value="${s.token_disponibili >= 999999 ? '' : s.token_disponibili}" 
           style="margin-top:6px;width:100%;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.75rem;outline:none;"
           onblur="aggiornaToken('${s.id}', this.value, this)"
@@ -272,6 +273,16 @@ async function toggleStudio(id, attivo) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
     body: JSON.stringify({ attivo })
+  });
+  await caricaStudi();
+}
+
+async function azzeraToken(id, nome) {
+  if (!confirm(`Azzerare i token usati di "${nome}"? Le perizie esistenti restano invariate.`)) return;
+  await fetch(`${SERVER}/admin/studi/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ token_usati: 0 })
   });
   await caricaStudi();
 }
