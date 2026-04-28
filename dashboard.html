@@ -472,7 +472,7 @@ async function caricaPerizie() {
     });
     if (res.status === 401) { localStorage.clear(); window.location.href = 'index.html'; return; }
 	if (res.status === 403) {
-	  alert('Account sospeso. Contatta il supporto.');
+	  alert('Account sospeso. Contatta Ispecto.');
 	  localStorage.clear();
 	  window.location.href = 'index.html';
 	  return;
