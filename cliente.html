@@ -311,6 +311,7 @@ video#video-locale {
 
 <div id="notifica-foto"></div>
 <div id="notifica-testo">📸 Foto Scattata!</div>
+<div id="chat-overlay" style="display:none;position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.82);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:14px 24px;font-family:var(--font-head);font-size:1rem;font-weight:600;color:#fff;z-index:102;text-align:center;max-width:85vw;letter-spacing:0.02em;"></div>
 
 <script>
 const SERVER = 'https://videoperizie-server-production.up.railway.app';
@@ -329,6 +330,21 @@ const istruzione = document.getElementById('istruzione');
 let socket = null;
 let pc = null;
 let localStream = null;
+let recoveryCount = 0; // conta i recovery per degradare progressivamente
+
+function getVideoConstraints() {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const type = conn ? conn.effectiveType : '4g';
+  
+  // Degrada anche in base al numero di recovery avuti
+  if (type === 'slow-2g' || type === '2g' || recoveryCount >= 4) {
+    return { facingMode: 'environment', width: { ideal: 480 }, height: { ideal: 360 }, frameRate: { ideal: 10, max: 15 } };
+  }
+  if (type === '3g' || recoveryCount >= 2) {
+    return { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15, max: 20 } };
+  }
+  return { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 25, max: 30 } };
+}
 let remoteAudioEl = null;
 let joined = false;
 let recoveryInProgress = false;
@@ -384,11 +400,7 @@ async function inizializzaMedia() {
   stopStream(localStream);
 
   localStream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: 'environment',
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
+    video: getVideoConstraints(),
     audio: true
   });
 
@@ -466,6 +478,14 @@ function collegaSocket() {
   socket.on('scatta-foto', () => {
     mostraNotifica();
     scattaFoto();
+  });
+
+  socket.on('chat-msg', ({ testo }) => {
+    const overlay = document.getElementById('chat-overlay');
+    if (!overlay) return;
+    overlay.textContent = testo;
+    overlay.style.display = 'block';
+    setTimeout(() => { overlay.style.display = 'none'; }, 2000);
   });
 
   socket.on('peer-disconnesso', () => {
@@ -593,12 +613,9 @@ async function recoverSession(reason) {
     console.warn('recoverSession start:', reason);
 
     const oldStream = localStream;
+    recoveryCount = Math.min(recoveryCount + 1, 5); // incrementa degrado
     const newStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: 'environment',
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
+      video: getVideoConstraints(),
       audio: true
     });
 
