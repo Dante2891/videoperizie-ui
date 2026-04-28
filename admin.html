@@ -96,7 +96,7 @@ input:focus { border-color: var(--accent); }
   <div class="page-header">
     <div class="page-title">Pannello Admin</div>
     <div style="display:flex;gap:10px">
-      <button class="btn-reset" id="btn-reset-sessioni">🔄 Reset Sessioni Mese</button>
+      <button class="btn-reset" id="btn-reset-sessioni">🔄 Reset Token</button>
       <button class="btn-new" id="btn-nuovo-studio">＋ Nuovo Studio</button>
     </div>
   </div>
@@ -114,7 +114,7 @@ input:focus { border-color: var(--accent); }
           <tr>
             <th>Studio</th>
             <th>Piano</th>
-            <th>Sessioni Mese</th>
+            <th>Token</th>
             <th>Operatori</th>
             <th>Stato</th>
             <th>Creato il</th>
@@ -211,7 +211,7 @@ async function caricaStudi() {
   const studi = await res.json();
   const tbody = document.getElementById('studi-body');
   tbody.innerHTML = studi.map(s => {
-    const perc = s.limite_sessioni >= 999999 ? 0 : Math.min(100, Math.round(s.sessioni_mese / s.limite_sessioni * 100));
+    const perc = s.token_disponibili >= 999999 ? 0 : Math.min(100, Math.round(s.token_usati / s.token_disponibili * 100));
     const barClass = perc > 90 ? 'danger' : perc > 70 ? 'warning' : '';
     const data = new Date(s.creato_il).toLocaleDateString('it-IT');
     return `
@@ -227,8 +227,8 @@ async function caricaStudi() {
       </td>
       <td>
         <div class="sessioni-bar">
-          <span>${s.sessioni_mese}/${s.limite_sessioni >= 999999 ? '∞' : s.limite_sessioni}</span>
-          ${s.limite_sessioni < 999999 ? `<div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${perc}%"></div></div>` : ''}
+          <span>${s.token_usati} / ${s.token_disponibili >= 999999 ? '∞' : s.token_disponibili}</span>
+          ${s.token_disponibili < 999999 ? `<div class="bar-bg"><div class="bar-fill ${barClass}" style="width:${perc}%"></div></div>` : ''}
         </div>
       </td>
       <td style="text-align:center">
@@ -242,6 +242,12 @@ async function caricaStudi() {
           ? `<button class="btn-sm btn-sospendi" onclick="toggleStudio('${s.id}', false)">⏸ Sospendi</button>`
           : `<button class="btn-sm btn-riattiva" onclick="toggleStudio('${s.id}', true)">▶ Riattiva</button>`
         }
+        <input type="number" placeholder="Token" value="${s.token_disponibili >= 999999 ? '' : s.token_disponibili}" 
+          style="margin-top:6px;width:100%;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.75rem;outline:none;"
+          onblur="aggiornaToken('${s.id}', this.value, this)"
+          onclick="this.select()"
+          title="Token disponibili (lascia vuoto per illimitati)"
+        >
         <input type="text" placeholder="URL logo" value="${s.logo_url || ''}" 
           style="margin-top:6px;width:100%;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.75rem;outline:none;"
           onblur="aggiornaLogo('${s.id}', this.value, this)"
@@ -268,6 +274,24 @@ async function toggleStudio(id, attivo) {
     body: JSON.stringify({ attivo })
   });
   await caricaStudi();
+}
+
+async function aggiornaToken(id, valore, inputEl) {
+  const token_disponibili = valore === '' ? 999999 : parseInt(valore);
+  if (isNaN(token_disponibili)) return;
+  try {
+    const res = await fetch(`${SERVER}/admin/studi/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ token_disponibili })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      if (inputEl) { inputEl.style.borderColor = 'var(--green)'; setTimeout(() => { inputEl.style.borderColor = ''; }, 2000); }
+    }
+  } catch(e) {
+    if (inputEl) inputEl.style.borderColor = 'var(--red)';
+  }
 }
 
 async function aggiornaLogo(id, logo_url, inputEl) {
