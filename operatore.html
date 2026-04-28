@@ -403,6 +403,10 @@ main {
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     <div id="rec-indicator">LIVE</div>
+    <div id="overlay-reconnecting" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.55);z-index:6;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+      <div style="font-family:var(--font-head);font-size:0.9rem;color:var(--orange);letter-spacing:0.1em;">⚠️ CONNESSIONE INSTABILE</div>
+      <div style="font-size:0.75rem;color:var(--muted);">Ripristino in corso...</div>
+    </div>
     <video id="video-remoto" autoplay playsinline></video>
     <div id="placeholder">
       <div class="placeholder-icon">📡</div>
@@ -435,6 +439,12 @@ main {
     </div>
 
     <div id="log-section">
+      <div class="section-label">Chat → Cliente</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <input type="text" id="chat-input" placeholder="Scrivi un messaggio..." 
+          style="flex:1;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-body);font-size:0.82rem;outline:none;">
+        <button id="btn-chat" style="padding:8px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;">▶</button>
+      </div>
       <div class="section-label">Log</div>
       <div id="log"></div>
     </div>
@@ -559,6 +569,21 @@ btnCopia.addEventListener('click', () => {
   log('Link copiato!');
 });
 
+// Chat operatore → cliente
+const chatInput = document.getElementById('chat-input');
+const btnChat = document.getElementById('btn-chat');
+
+function inviaMsgChat() {
+  const msg = chatInput.value.trim();
+  if (!msg || !socket || !token) return;
+  socket.emit('chat-msg', { token, testo: msg });
+  log(`💬 Tu: ${msg}`);
+  chatInput.value = '';
+}
+
+btnChat.addEventListener('click', inviaMsgChat);
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') inviaMsgChat(); });
+
 document.getElementById('btn-wa').addEventListener('click', () => {
   let tel = (telefono_cliente || '').replace(/\s/g, '').replace(/[^\d]/g, '');
   if (tel.startsWith('0')) tel = '39' + tel.slice(1);
@@ -643,10 +668,11 @@ function collegaSocket() {
   socket.on('peer-disconnesso', () => {
     setStato('Connessione instabile — attendere...', 'attesa');
     btnFoto.disabled = true;
-    placeholder.style.display = 'flex';
-    videoArea.classList.remove('active');
+    // Mostra overlay invece di nascondere il video
+    const overlay = document.getElementById('overlay-reconnecting');
+    if (overlay) overlay.style.display = 'flex';
     recIndicator.classList.remove('visible');
-    log('Cliente disconnesso');
+    log('⚠️ Connessione instabile — ripristino automatico in corso...');
   });
 }
 
@@ -673,7 +699,10 @@ async function avviaWebRTC() {
       videoRemoto.srcObject = e.streams[0];
       placeholder.style.display = 'none';
       videoArea.classList.add('active');
-      log('Track ricevuto: ' + e.track.kind);
+      const overlay = document.getElementById('overlay-reconnecting');
+      if (overlay) overlay.style.display = 'none';
+      recIndicator.classList.add('visible');
+      log('📡 Cliente connesso — video attivo');
       if (videoRemoto.paused) videoRemoto.play().catch(err => log('Play error: ' + err));
     }
   };
