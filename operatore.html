@@ -217,9 +217,12 @@ main {
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
   flex-shrink: 0;
 }
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-track { background: transparent; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .section {
   padding: 16px;
@@ -323,11 +326,11 @@ main {
 
 /* FOTO SECTION */
 #foto-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   padding: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .foto-header {
   font-family: var(--font-head);
@@ -351,8 +354,8 @@ main {
   font-weight: 600;
 }
 #foto-list {
-  flex: 1;
   overflow-y: auto;
+  max-height: 320px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
@@ -655,6 +658,7 @@ document.getElementById('btn-wa').addEventListener('click', () => {
 });
 
 let fotoInCorso = false;
+let disconnectTimer = null;
 
 btnFoto.addEventListener('click', () => {
   if (socket && token && !fotoInCorso) {
@@ -793,6 +797,11 @@ function collegaSocket() {
   });
 
   socket.on('cliente-connesso', async () => {
+    if (disconnectTimer) {
+      clearTimeout(disconnectTimer);
+      disconnectTimer = null;
+    }
+
     setStato('Cliente connesso', 'connesso');
     log('Cliente connesso! Avvio WebRTC...');
     btnFoto.disabled = false;
@@ -835,20 +844,30 @@ function collegaSocket() {
     setStato('Connessione instabile — attendere...', 'attesa');
     btnFoto.disabled = true;
     recIndicator.classList.remove('visible');
-    log('⚠️ Cliente disconnesso — in attesa di riconnessione...');
 
-    // Dimma il video (mantieni ultimo frame) invece di nasconderlo
     videoRemoto.style.opacity = '0.35';
     videoRemoto.style.filter = 'grayscale(60%)';
-    fermaMonitorQualita();
-    const badge = document.getElementById('quality-badge');
-    if (badge) { badge.textContent = '🔴 Senza video'; badge.style.color = '#ef4444'; }
 
-    // Chiudi pc vecchio — ripartirà su cliente-connesso
-    if (pc) {
-      try { pc.ontrack = null; pc.onicecandidate = null; pc.onconnectionstatechange = null; pc.close(); } catch(_) {}
-      pc = null;
-    }
+    const badge = document.getElementById('quality-badge');
+    if (badge) { badge.textContent = '🔴 Senza video'; badge.style.color = '#ef4444'; badge.style.display = 'block'; }
+
+    log('⚠️ Cliente instabile — attendo riconnessione breve...');
+
+    if (disconnectTimer) clearTimeout(disconnectTimer);
+
+    disconnectTimer = setTimeout(() => {
+      log('🔄 Riconnessione non recuperata — chiudo peer e attendo rientro cliente');
+      fermaMonitorQualita();
+      if (pc) {
+        try {
+          pc.ontrack = null;
+          pc.onicecandidate = null;
+          pc.onconnectionstatechange = null;
+          pc.close();
+        } catch(_) {}
+        pc = null;
+      }
+    }, 5000);
   });
 }
 
