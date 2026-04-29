@@ -926,8 +926,14 @@ async function salvaFoto(blobData) {
   const ora = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
   const ref = riferimento ? riferimento.replace(/[^a-zA-Z0-9]/g, '_') : 'perizia';
   const nomeFile = `${ref}_${timestamp}_${ora}_${String(fotoCount).padStart(3,'0')}.jpg`;
-  const byteArr = new Uint8Array(blobData);
-  const blob = new Blob([byteArr], { type: 'image/jpeg' });
+  let blob;
+
+	if (blobData instanceof ArrayBuffer) {
+	  blob = new Blob([blobData], { type: 'image/jpeg' });
+	} else {
+	  const byteArr = new Uint8Array(blobData);
+	  blob = new Blob([byteArr], { type: 'image/jpeg' });
+	}
   const url = URL.createObjectURL(blob);
 
   const item = document.createElement('div');
