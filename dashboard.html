@@ -277,13 +277,12 @@ input:focus { border-color: var(--accent); }
           <th>Riferimento</th>
           <th>Operatore</th>
           <th>Data</th>
-          <th>Foto</th>
           <th>Stato</th>
           <th>Azioni</th>
         </tr>
       </thead>
       <tbody id="perizie-body">
-        <tr><td colspan="7"><div class="empty"><div class="empty-icon">⏳</div>Caricamento...</div></td></tr>
+        <tr><td colspan="6"><div class="empty"><div class="empty-icon">⏳</div>Caricamento...</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -494,7 +493,7 @@ function aggiornaStat() {
 function renderPerizie(perizie) {
   const tbody = document.getElementById('perizie-body');
   if (perizie.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📋</div>Nessuna perizia ancora. Crea la prima!</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div>Nessuna perizia ancora. Crea la prima!</div></td></tr>`;
     return;
   }
   tbody.innerHTML = perizie.map(p => {
@@ -507,7 +506,6 @@ function renderPerizie(perizie) {
       <td>${p.riferimento || '—'}</td>
       <td style="color:var(--muted)">${p.op_nome} ${p.op_cognome}</td>
       <td style="color:var(--muted);font-size:0.82rem">${data}</td>
-      <td style="text-align:center">${p.num_foto || 0}</td>
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
         <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
