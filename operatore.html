@@ -403,6 +403,7 @@ main {
     <div class="corner corner-bl"></div>
     <div class="corner corner-br"></div>
     <div id="rec-indicator">LIVE</div>
+    <div id="quality-badge" style="display:none;position:absolute;top:12px;right:12px;z-index:5;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);border-radius:8px;padding:4px 10px;font-size:0.72rem;font-family:var(--font-head);letter-spacing:0.08em;color:#fff;"></div>
     <video id="video-remoto" autoplay playsinline></video>
     <div id="placeholder">
       <div class="placeholder-icon">📡</div>
@@ -617,6 +618,55 @@ function flashEffect() {
 }
 
 // Avvia subito la connessione socket con il token dalla URL
+// Monitor qualità connessione
+let qualityTimer = null;
+let prevPacketsLost = 0;
+let prevPacketsReceived = 0;
+
+function avviaMonitorQualita() {
+  if (qualityTimer) clearInterval(qualityTimer);
+  const badge = document.getElementById('quality-badge');
+  if (!badge) return;
+  badge.style.display = 'block';
+
+  qualityTimer = setInterval(async () => {
+    if (!pc || pc.connectionState === 'closed') return;
+    try {
+      const stats = await pc.getStats();
+      let lost = 0, received = 0;
+      stats.forEach(s => {
+        if (s.type === 'inbound-rtp' && s.kind === 'video') {
+          lost = s.packetsLost || 0;
+          received = s.packetsReceived || 0;
+        }
+      });
+      const deltaLost = lost - prevPacketsLost;
+      const deltaReceived = received - prevPacketsReceived;
+      prevPacketsLost = lost;
+      prevPacketsReceived = received;
+      const total = deltaLost + deltaReceived;
+      const lossRate = total > 0 ? deltaLost / total : 0;
+
+      if (lossRate < 0.02) {
+        badge.textContent = '🟢 Rete ottima';
+        badge.style.color = '#10b981';
+      } else if (lossRate < 0.08) {
+        badge.textContent = '🟡 Rete media';
+        badge.style.color = '#f59e0b';
+      } else {
+        badge.textContent = '🔴 Rete scarsa';
+        badge.style.color = '#ef4444';
+      }
+    } catch(e) {}
+  }, 5000);
+}
+
+function fermaMonitorQualita() {
+  if (qualityTimer) { clearInterval(qualityTimer); qualityTimer = null; }
+  const badge = document.getElementById('quality-badge');
+  if (badge) badge.style.display = 'none';
+}
+
 collegaSocket();
 
 function collegaSocket() {
@@ -655,13 +705,29 @@ function collegaSocket() {
     btnFoto.disabled = false;
   });
 
-  socket.on('peer-disconnesso', () => {
+  socket.on('peer-disconnesso', async () => {
     setStato('Connessione instabile — attendere...', 'attesa');
     btnFoto.disabled = true;
+    recIndicator.classList.remove('visible');
+    log('⚠️ Connessione instabile — ripristino in corso...');
+
+    // Tenta iceRestart prima del recovery completo
+    if (pc && pc.signalingState === 'stable' && pc.connectionState !== 'closed') {
+      try {
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        socket.emit('segnale', { token, data: offer });
+        log('🔄 ICE restart inviato');
+        return;
+      } catch(e) {
+        log('ICE restart fallito — recovery completo');
+      }
+    }
+
+    // Fallback — recovery normale
+    fermaMonitorQualita();
     placeholder.style.display = 'flex';
     videoArea.classList.remove('active');
-    recIndicator.classList.remove('visible');
-    log('Cliente disconnesso');
   });
 }
 
@@ -686,6 +752,7 @@ async function avviaWebRTC() {
       placeholder.style.display = 'none';
       videoArea.classList.add('active');
       log('Track ricevuto: ' + e.track.kind);
+      if (e.track.kind === 'video') avviaMonitorQualita();
       if (videoRemoto.paused) videoRemoto.play().catch(err => log('Play error: ' + err));
     }
   };
