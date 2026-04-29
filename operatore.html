@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ispecto — Operatore</title>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/piexifjs@1.0.6/piexif.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -832,10 +833,10 @@ function collegaSocket() {
     }
   });
 
-  socket.on('foto', async ({ blob }) => {
+  socket.on('foto', async ({ blob, gps }) => {
     fotoCount++;
     log(`Foto ricevuta! (${fotoCount})`);
-    await salvaFoto(blob);
+    await salvaFoto(blob, gps);
     fotoInCorso = false;
     btnFoto.disabled = false;
   });
@@ -921,28 +922,51 @@ async function avviaWebRTC() {
   log('Offer WebRTC inviato');
 }
 
-async function salvaFoto(blobData) {
+async function salvaFoto(blobData, gps) {
   const timestamp = new Date().toISOString().slice(0,10);
   const ora = new Date().toTimeString().slice(0,8).replace(/:/g,'-');
   const ref = riferimento ? riferimento.replace(/[^a-zA-Z0-9]/g, '_') : 'perizia';
   const nomeFile = `${ref}_${timestamp}_${ora}_${String(fotoCount).padStart(3,'0')}.jpg`;
-  let blob;
 
-	if (blobData instanceof ArrayBuffer) {
-	  blob = new Blob([blobData], { type: 'image/jpeg' });
-	} else {
-	  const byteArr = new Uint8Array(blobData);
-	  blob = new Blob([byteArr], { type: 'image/jpeg' });
-	}
+  // Ricostruisce Blob — Uint8Array funziona sia su ArrayBuffer che su Buffer-like
+  let blob = new Blob([new Uint8Array(blobData)], { type: 'image/jpeg' });
+
+  // Inietta coordinate GPS nei metadati EXIF
+  if (gps?.lat != null && gps?.lon != null && typeof piexif !== 'undefined') {
+    try {
+      const dataUrl = await blobToDataUrl(blob);
+      const exifObj = { 'GPS': {} };
+      exifObj['GPS'][piexif.GPSIFD.GPSLatitudeRef]  = gps.lat >= 0 ? 'N' : 'S';
+      exifObj['GPS'][piexif.GPSIFD.GPSLatitude]     = decimalToDmsRational(Math.abs(gps.lat));
+      exifObj['GPS'][piexif.GPSIFD.GPSLongitudeRef] = gps.lon >= 0 ? 'E' : 'W';
+      exifObj['GPS'][piexif.GPSIFD.GPSLongitude]    = decimalToDmsRational(Math.abs(gps.lon));
+      exifObj['GPS'][piexif.GPSIFD.GPSAltitudeRef]  = 0;
+      const exifBytes = piexif.dump(exifObj);
+      const withExif  = piexif.insert(exifBytes, dataUrl);
+      blob = dataUrlToBlob(withExif, 'image/jpeg');
+      log(`📍 GPS nei metadati: ${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)}`);
+    } catch(e) {
+      console.warn('EXIF inject fallito:', e.message);
+    }
+  }
+
+  // Mostra anteprima in UI
   const url = URL.createObjectURL(blob);
-
   const item = document.createElement('div');
   item.className = 'foto-item';
   item.innerHTML = `<img src="${url}"><div class="foto-item-label">#${String(fotoCount).padStart(3,'0')} · ${new Date().toLocaleTimeString()}</div>`;
-  item.addEventListener('click', () => window.open(url));
+  // Crea URL fresco al click per evitare uso di URL revocato
+  item.addEventListener('click', () => {
+    const clickUrl = URL.createObjectURL(blob);
+    window.open(clickUrl);
+    setTimeout(() => URL.revokeObjectURL(clickUrl), 5000);
+  });
   fotoList.prepend(item);
   fotoCountEl.textContent = fotoCount;
+  // Libera URL di anteprima dopo il caricamento dell'immagine
+  item.querySelector('img').onload = () => URL.revokeObjectURL(url);
 
+  // Salva su disco (File System Access API) o download diretto
   if (cartella) {
     try {
       const fileHandle = await cartella.getFileHandle(nomeFile, { create: true });
@@ -950,12 +974,43 @@ async function salvaFoto(blobData) {
       await writable.write(blob);
       await writable.close();
       log(`✅ Salvata: ${nomeFile}`);
-    } catch(e) { log(`❌ Errore: ${e.message}`); }
+    } catch(e) { log(`❌ Errore salvataggio: ${e.message}`); }
   } else {
     const a = document.createElement('a');
-    a.href = url; a.download = nomeFile; a.click();
+    a.href = URL.createObjectURL(blob);
+    a.download = nomeFile;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     log(`⬇️ Download: ${nomeFile}`);
   }
+}
+
+// Converte gradi decimali in DMS razionale per EXIF
+function decimalToDmsRational(decimal) {
+  const deg    = Math.floor(decimal);
+  const minFul = (decimal - deg) * 60;
+  const min    = Math.floor(minFul);
+  const sec    = Math.round((minFul - min) * 60 * 1000);
+  return [[deg, 1], [min, 1], [sec, 1000]];
+}
+
+// Blob → data URL (per piexifjs)
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// data URL → Blob
+function dataUrlToBlob(dataUrl, mimeType) {
+  const base64 = dataUrl.split(',')[1];
+  const binary = atob(base64);
+  const arr = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+  return new Blob([arr], { type: mimeType });
 }
 </script>
 </body>
