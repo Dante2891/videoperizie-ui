@@ -784,15 +784,18 @@ function scattaFoto() {
   ctx.textAlign = 'left';
 
   canvas.toBlob(blob => {
-    if (!blob) return;
-    blob.arrayBuffer().then(buffer => {
-	  socket?.emit('foto', {
-		token,
-		blob: buffer,
-		gps: gpsCoords
-	  });
-	}).catch(err => console.error('Errore invio foto:', err));
-   }, 'image/jpeg', 0.85);
+	  if (!blob) return;
+
+	  blob.arrayBuffer().then(buffer => {
+		socket?.emit('foto', {
+		  token,
+		  blob: buffer,
+		  gps: gpsCoords
+		});
+	  }).catch(err => console.error('Errore invio foto:', err));
+
+	}, 'image/jpeg', 0.85);
+	}
 
 function mostraNotifica() {
   notificaFoto.style.display = 'block';
