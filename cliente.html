@@ -479,6 +479,11 @@ function collegaSocket() {
     scattaFoto();
   });
 
+  socket.on('imposta-limiti', async ({ maxBitrate, maxFps }) => {
+    console.log('Limiti ricevuti — bitrate:', maxBitrate, 'kbps | fps:', maxFps);
+    await applicaLimiti(maxBitrate, maxFps);
+  });
+
   socket.on('peer-disconnesso', () => {
     istruzione.textContent = '⚠️ Operatore disconnesso';
   });
@@ -688,6 +693,32 @@ if (navigator.geolocation) {
     () => { gpsCoords = null; },
     { enableHighAccuracy: true }
   );
+}
+
+async function applicaLimiti(maxBitrate, maxFps) {
+  // Applica limite FPS al video track
+  if (maxFps && localStream) {
+    const vt = localStream.getVideoTracks()[0];
+    if (vt) {
+      try {
+        await vt.applyConstraints({ frameRate: { max: maxFps } });
+        console.log('FPS limite applicato:', maxFps);
+      } catch(e) { console.warn('Errore applyConstraints FPS:', e); }
+    }
+  }
+  // Applica limite bitrate via RTCRtpSender
+  if (maxBitrate && pc) {
+    const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+    if (sender) {
+      try {
+        const params = sender.getParameters();
+        if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+        params.encodings.forEach(enc => { enc.maxBitrate = maxBitrate * 1000; }); // kbps → bps
+        await sender.setParameters(params);
+        console.log('Bitrate limite applicato:', maxBitrate, 'kbps');
+      } catch(e) { console.warn('Errore setParameters bitrate:', e); }
+    }
+  }
 }
 
 function scattaFoto() {
