@@ -287,6 +287,40 @@ main {
 .btn-green { background: rgba(16,185,129,0.1); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
 .btn-green:not(:disabled):hover { background: rgba(16,185,129,0.2); }
 
+/* Qualità video — preset */
+.qualita-preset-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.btn-preset {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.18s;
+}
+.btn-preset:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-preset:not(:disabled):hover { border-color: var(--accent); color: var(--text); }
+.btn-preset.attivo {
+  border-color: var(--accent);
+  background: rgba(59,130,246,0.12);
+  color: var(--text);
+}
+.btn-preset .preset-icon { font-size: 1rem; flex-shrink: 0; }
+.btn-preset .preset-info { display: flex; flex-direction: column; gap: 1px; }
+.btn-preset .preset-nome { font-weight: 500; font-size: 0.82rem; }
+.btn-preset .preset-dettaglio { font-size: 0.7rem; color: var(--muted); }
+
 /* FOTO SECTION */
 #foto-section {
   flex: 1;
@@ -427,6 +461,33 @@ main {
       <button class="btn btn-green" id="btn-cartella">📁 Seleziona Cartella</button>
     </div>
 
+    <div class="section">
+      <div class="section-label">Qualità Video</div>
+      <div class="qualita-preset-group">
+        <button class="btn-preset attivo" id="preset-auto" disabled>
+          <span class="preset-icon">⚡</span>
+          <span class="preset-info">
+            <span class="preset-nome">Automatica</span>
+            <span class="preset-dettaglio">700 kbps · 15 fps</span>
+          </span>
+        </button>
+        <button class="btn-preset" id="preset-lenta" disabled>
+          <span class="preset-icon">🐢</span>
+          <span class="preset-info">
+            <span class="preset-nome">Rete lenta</span>
+            <span class="preset-dettaglio">350 kbps · 10 fps</span>
+          </span>
+        </button>
+        <button class="btn-preset" id="preset-alta" disabled>
+          <span class="preset-icon">🔬</span>
+          <span class="preset-info">
+            <span class="preset-nome">Alta qualità</span>
+            <span class="preset-dettaglio">1400 kbps · 24 fps</span>
+          </span>
+        </button>
+      </div>
+    </div>
+
     <div id="foto-section">
       <div class="foto-header">
         Foto Scattate
@@ -481,6 +542,16 @@ const btnNuova = document.getElementById('btn-nuova');
 const btnCopia = document.getElementById('btn-copia');
 const btnFoto = document.getElementById('btn-foto');
 const btnCartella = document.getElementById('btn-cartella');
+const presetBtns = {
+  auto:  document.getElementById('preset-auto'),
+  lenta: document.getElementById('preset-lenta'),
+  alta:  document.getElementById('preset-alta')
+};
+const PRESETS = {
+  auto:  { maxBitrate: 700,  maxFps: 15 },
+  lenta: { maxBitrate: 350,  maxFps: 10 },
+  alta:  { maxBitrate: 1400, maxFps: 24 }
+};
 const fotoList = document.getElementById('foto-list');
 const fotoCountEl = document.getElementById('foto-count');
 const logEl = document.getElementById('log');
@@ -602,6 +673,18 @@ btnFoto.addEventListener('click', () => {
   }
 });
 
+function inviaLimiti(key) {
+  if (!socket || !token) return;
+  const { maxBitrate, maxFps } = PRESETS[key];
+  socket.emit('imposta-limiti', { token, maxBitrate, maxFps });
+  Object.entries(presetBtns).forEach(([k, btn]) => btn.classList.toggle('attivo', k === key));
+  const nomi = { auto: 'Automatica', lenta: 'Rete lenta', alta: 'Alta qualità' };
+  log(`Qualità → ${nomi[key]} (${maxBitrate} kbps · ${maxFps} fps)`);
+}
+Object.keys(presetBtns).forEach(key => {
+  presetBtns[key].addEventListener('click', () => inviaLimiti(key));
+});
+
 // Bottone termina sessione
 document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
   <button class="btn btn-secondary" id="btn-termina">✅ Termina Sessione</button>
@@ -683,6 +766,8 @@ function collegaSocket() {
     setStato('Cliente connesso', 'connesso');
     log('Cliente connesso! Avvio WebRTC...');
     btnFoto.disabled = false;
+    Object.values(presetBtns).forEach(btn => btn.disabled = false);
+    inviaLimiti('auto'); // invia preset di default al collegamento
     recIndicator.classList.add('visible');
     await aggiornaStato('in_corso');
     await avviaWebRTC();
