@@ -700,33 +700,63 @@ function flashEffect() {
   setTimeout(() => flash.classList.remove('active'), 150);
 }
 
-// Avvia subito la connessione socket con il token dalla URL
 // Monitor qualità connessione
 let qualityTimer = null;
 let prevPacketsLost = 0;
 let prevPacketsReceived = 0;
+let prevFramesDecoded = 0;
+let frozenFrameCount = 0;
 
 function avviaMonitorQualita() {
   if (qualityTimer) clearInterval(qualityTimer);
   const badge = document.getElementById('quality-badge');
   if (!badge) return;
   badge.style.display = 'block';
+  prevPacketsLost = 0; prevPacketsReceived = 0;
+  prevFramesDecoded = 0; frozenFrameCount = 0;
 
   qualityTimer = setInterval(async () => {
-    if (!pc || pc.connectionState === 'closed') return;
+    if (!pc) return;
+
+    // Controlla stato connessione direttamente
+    const cs = pc.connectionState;
+    if (cs === 'disconnected' || cs === 'failed' || cs === 'closed') {
+      badge.textContent = '🔴 Senza video';
+      badge.style.color = '#ef4444';
+      return;
+    }
+
     try {
       const stats = await pc.getStats();
-      let lost = 0, received = 0;
+      let lost = 0, received = 0, framesDecoded = 0;
       stats.forEach(s => {
         if (s.type === 'inbound-rtp' && s.kind === 'video') {
           lost = s.packetsLost || 0;
           received = s.packetsReceived || 0;
+          framesDecoded = s.framesDecoded || 0;
         }
       });
+
       const deltaLost = lost - prevPacketsLost;
       const deltaReceived = received - prevPacketsReceived;
+      const deltaFrames = framesDecoded - prevFramesDecoded;
       prevPacketsLost = lost;
       prevPacketsReceived = received;
+      prevFramesDecoded = framesDecoded;
+
+      // Rileva freeze video (0 frame nuovi per 2+ cicli = ~10s)
+      if (deltaFrames === 0 && received > 0) {
+        frozenFrameCount++;
+      } else {
+        frozenFrameCount = 0;
+      }
+
+      if (frozenFrameCount >= 2) {
+        badge.textContent = '🔴 Video bloccato';
+        badge.style.color = '#ef4444';
+        return;
+      }
+
       const total = deltaLost + deltaReceived;
       const lossRate = total > 0 ? deltaLost / total : 0;
 
@@ -767,8 +797,19 @@ function collegaSocket() {
     log('Cliente connesso! Avvio WebRTC...');
     btnFoto.disabled = false;
     Object.values(presetBtns).forEach(btn => btn.disabled = false);
-    inviaLimiti('auto'); // invia preset di default al collegamento
+    inviaLimiti('auto');
     recIndicator.classList.add('visible');
+
+    // Ripristina video (potrebbe essere dimmato da peer-disconnesso)
+    videoRemoto.style.opacity = '1';
+    videoRemoto.style.filter = '';
+
+    // Chiudi eventuale pc rimasto aperto prima di riaprire
+    if (pc) {
+      try { pc.ontrack = null; pc.onicecandidate = null; pc.onconnectionstatechange = null; pc.close(); } catch(_) {}
+      pc = null;
+    }
+
     await aggiornaStato('in_corso');
     await avviaWebRTC();
   });
@@ -794,25 +835,20 @@ function collegaSocket() {
     setStato('Connessione instabile — attendere...', 'attesa');
     btnFoto.disabled = true;
     recIndicator.classList.remove('visible');
-    log('⚠️ Connessione instabile — ripristino in corso...');
+    log('⚠️ Cliente disconnesso — in attesa di riconnessione...');
 
-    // Tenta iceRestart prima del recovery completo
-    if (pc && pc.signalingState === 'stable' && pc.connectionState !== 'closed') {
-      try {
-        const offer = await pc.createOffer({ iceRestart: true });
-        await pc.setLocalDescription(offer);
-        socket.emit('segnale', { token, data: offer });
-        log('🔄 ICE restart inviato');
-        return;
-      } catch(e) {
-        log('ICE restart fallito — recovery completo');
-      }
-    }
-
-    // Fallback — recovery normale
+    // Dimma il video (mantieni ultimo frame) invece di nasconderlo
+    videoRemoto.style.opacity = '0.35';
+    videoRemoto.style.filter = 'grayscale(60%)';
     fermaMonitorQualita();
-    placeholder.style.display = 'flex';
-    videoArea.classList.remove('active');
+    const badge = document.getElementById('quality-badge');
+    if (badge) { badge.textContent = '🔴 Senza video'; badge.style.color = '#ef4444'; }
+
+    // Chiudi pc vecchio — ripartirà su cliente-connesso
+    if (pc) {
+      try { pc.ontrack = null; pc.onicecandidate = null; pc.onconnectionstatechange = null; pc.close(); } catch(_) {}
+      pc = null;
+    }
   });
 }
 
@@ -844,6 +880,20 @@ async function avviaWebRTC() {
 
   pc.onicecandidate = (e) => {
     if (e.candidate) socket.emit('segnale', { token, data: e.candidate });
+  };
+
+  pc.onconnectionstatechange = () => {
+    const badge = document.getElementById('quality-badge');
+    const cs = pc.connectionState;
+    if (cs === 'disconnected' || cs === 'failed') {
+      if (badge) { badge.textContent = '🔴 Senza video'; badge.style.color = '#ef4444'; badge.style.display = 'block'; }
+      videoRemoto.style.opacity = '0.35';
+      videoRemoto.style.filter = 'grayscale(60%)';
+      log('⚠️ WebRTC ' + cs);
+    } else if (cs === 'connected') {
+      videoRemoto.style.opacity = '1';
+      videoRemoto.style.filter = '';
+    }
   };
 
   const offer = await pc.createOffer();
