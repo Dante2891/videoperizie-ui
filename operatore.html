@@ -889,12 +889,18 @@ async function avviaWebRTC() {
 
   pc.ontrack = (e) => {
     if (e.streams && e.streams[0]) {
-      videoRemoto.srcObject = e.streams[0];
-      placeholder.style.display = 'none';
-      videoArea.classList.add('active');
       log('Track ricevuto: ' + e.track.kind);
-      if (e.track.kind === 'video') avviaMonitorQualita();
-      if (videoRemoto.paused) videoRemoto.play().catch(err => log('Play error: ' + err));
+      // Imposta srcObject solo la prima volta per evitare AbortError su play()
+      if (!videoRemoto.srcObject) {
+        videoRemoto.srcObject = e.streams[0];
+        placeholder.style.display = 'none';
+        videoArea.classList.add('active');
+      }
+      // Avvia play() e monitor qualità solo quando arriva il video
+      if (e.track.kind === 'video') {
+        avviaMonitorQualita();
+        videoRemoto.play().catch(err => log('Play error: ' + err));
+      }
     }
   };
 
