@@ -497,7 +497,7 @@ function renderPerizie(perizie) {
     return;
   }
   tbody.innerHTML = perizie.map(p => {
-    const data = new Date(p.creata_il).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const data = new Date(p.creata_il).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Europe/Rome' });
     const tel = p.telefono_cliente.replace(/\s/g, '');
     const waLink = `https://wa.me/${tel.startsWith('+') ? tel.slice(1) : '39' + tel}?text=${encodeURIComponent(`Gentile ${p.nome_cliente}, la contatto per avviare la videoperizia. Clicchi sul link: ${window.location.origin}/videoperizie/cliente.html?token=${p.token_sessione}`)}`;
     return `
