@@ -764,6 +764,9 @@ function avviaMonitorQualita() {
       if (frozenFrameCount >= 2) {
         badge.textContent = '🔴 Video bloccato';
         badge.style.color = '#ef4444';
+        // Chiede al cliente di rigenerare il flusso video
+        if (socket && token) socket.emit('refresh-video', { token });
+        frozenFrameCount = 0;
         return;
       }
 
