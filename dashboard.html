@@ -508,12 +508,25 @@ function renderPerizie(perizie) {
       <td style="color:var(--muted);font-size:0.82rem">${data}</td>
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
-        <button class="btn-termina-dash" onclick="terminaPerizia('${p.id}')" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
-        ${p.stato !== 'completata' ? `<button class="btn-avvia" onclick="avviaPerizia('${p.token_sessione}', '${p.id}', '${p.telefono_cliente}', '${p.nome_cliente} ${p.cognome_cliente}', '${p.riferimento || ''}', '${p.email_cliente || ''}')">▶ Avvia</button>` : ''}
+        <button class="btn-termina-dash" data-id="${p.id}" ${p.stato === 'completata' ? 'disabled' : ''}>✅ Termina</button>
+        ${p.stato !== 'completata' ? `<button class="btn-avvia" data-id="${p.id}">▶ Avvia</button>` : ''}
       </td>
     </tr>`;
   }).join('');
 }
+
+// Event delegation per Avvia e Termina (sicuro con qualsiasi carattere nel nome)
+document.getElementById('perizie-body').addEventListener('click', (e) => {
+  const btnAvvia = e.target.closest('.btn-avvia');
+  const btnTermina = e.target.closest('.btn-termina-dash');
+  if (btnAvvia) {
+    const p = tuttePerizie.find(p => p.id == btnAvvia.dataset.id);
+    if (p) avviaPerizia(p.token_sessione, p.id, p.telefono_cliente, `${p.nome_cliente} ${p.cognome_cliente}`, p.riferimento || '', p.email_cliente || '');
+  }
+  if (btnTermina && !btnTermina.disabled) {
+    terminaPerizia(btnTermina.dataset.id);
+  }
+});
 
 document.getElementById('search').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
