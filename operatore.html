@@ -696,8 +696,13 @@ document.getElementById('btn-nuova').insertAdjacentHTML('afterend', `
 `);
 document.getElementById('btn-termina').addEventListener('click', async () => {
   await aggiornaStato('completata');
-  if (socket && token) socket.emit('termina-sessione', { token });
-  setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+  if (socket && token) {
+    socket.emit('termina-sessione', { token });
+    await new Promise(r => setTimeout(r, 300));
+    socket.off('disconnect');
+    socket.disconnect();
+  }
+  window.location.href = 'dashboard.html';
 });
 
 function flashEffect() {
@@ -813,6 +818,9 @@ function collegaSocket() {
     // Ripristina video (potrebbe essere dimmato da peer-disconnesso)
     videoRemoto.style.opacity = '1';
     videoRemoto.style.filter = '';
+
+    // Reset srcObject così il nuovo stream viene accettato dall'handler ontrack
+    videoRemoto.srcObject = null;
 
     // Chiudi eventuale pc rimasto aperto prima di riaprire
     if (pc) {
