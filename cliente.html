@@ -488,6 +488,21 @@ function collegaSocket() {
     istruzione.textContent = '⚠️ Operatore disconnesso';
   });
 
+  socket.on('refresh-video', async () => {
+    console.log('refresh-video ricevuto — rigenero stream');
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+      if (localStream) localStream.getTracks().forEach(t => t.stop());
+      localStream = newStream;
+      videoLocale.srcObject = newStream;
+      const senders = pc?.getSenders() || [];
+      newStream.getTracks().forEach(newTrack => {
+        const sender = senders.find(s => s.track?.kind === newTrack.kind);
+        if (sender) sender.replaceTrack(newTrack);
+      });
+    } catch(e) { console.warn('refresh-video fallito:', e); }
+  });
+
   socket.on('sessione-terminata', () => {
     cleanupPeer();
     stopVideoWatchdog();
