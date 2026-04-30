@@ -660,6 +660,20 @@ document.getElementById('btn-wa').addEventListener('click', () => {
 
 let fotoInCorso = false;
 let disconnectTimer = null;
+let playing = false;
+let iceRestarting = false;
+
+async function safePlay(video) {
+  if (playing) return;
+  playing = true;
+  try {
+    await video.play();
+  } catch (err) {
+    if (err.name !== 'AbortError') log('Play error: ' + err);
+  } finally {
+    playing = false;
+  }
+}
 
 btnFoto.addEventListener('click', () => {
   if (socket && token && !fotoInCorso) {
@@ -824,6 +838,7 @@ function collegaSocket() {
 
     // Reset srcObject così il nuovo stream viene accettato dall'handler ontrack
     videoRemoto.srcObject = null;
+    playing = false;
 
     // Chiudi eventuale pc rimasto aperto prima di riaprire
     if (pc) {
@@ -865,20 +880,35 @@ function collegaSocket() {
 
     log('⚠️ Cliente instabile — attendo riconnessione breve...');
 
-    if (disconnectTimer) clearTimeout(disconnectTimer);
+    if (disconnectTimer) { clearTimeout(disconnectTimer); disconnectTimer = null; }
 
+    // 5s → warning
     disconnectTimer = setTimeout(() => {
-      log('🔄 Riconnessione non recuperata — chiudo peer e attendo rientro cliente');
-      fermaMonitorQualita();
-      if (pc) {
-        try {
-          pc.ontrack = null;
-          pc.onicecandidate = null;
-          pc.onconnectionstatechange = null;
-          pc.close();
-        } catch(_) {}
-        pc = null;
-      }
+      log('⏳ 5s senza cliente — attendo ancora...');
+      setStato('Connessione persa — recupero...', 'attesa');
+
+      // 10s → refresh video
+      disconnectTimer = setTimeout(() => {
+        log('🔄 10s — richiedo refresh video al cliente');
+        if (socket && token) socket.emit('refresh-video', { token });
+
+        // 20s → chiude peer
+        disconnectTimer = setTimeout(() => {
+          log('❌ 20s — chiudo peer e attendo rientro cliente');
+          fermaMonitorQualita();
+          if (pc) {
+            try {
+              pc.ontrack = null;
+              pc.onicecandidate = null;
+              pc.onconnectionstatechange = null;
+              pc.close();
+            } catch(_) {}
+            pc = null;
+          }
+          videoRemoto.srcObject = null;
+          playing = false;
+        }, 10000);
+      }, 5000);
     }, 5000);
   });
 }
@@ -910,7 +940,7 @@ async function avviaWebRTC() {
       // Avvia play() e monitor qualità solo quando arriva il video
       if (e.track.kind === 'video') {
         avviaMonitorQualita();
-        videoRemoto.play().catch(err => log('Play error: ' + err));
+        safePlay(videoRemoto);
       }
     }
   };
@@ -919,17 +949,35 @@ async function avviaWebRTC() {
     if (e.candidate) socket.emit('segnale', { token, data: e.candidate });
   };
 
-  pc.onconnectionstatechange = () => {
+  pc.onconnectionstatechange = async () => {
     const badge = document.getElementById('quality-badge');
     const cs = pc.connectionState;
-    if (cs === 'disconnected' || cs === 'failed') {
+    if (cs === 'disconnected') {
       if (badge) { badge.textContent = '🔴 Senza video'; badge.style.color = '#ef4444'; badge.style.display = 'block'; }
       videoRemoto.style.opacity = '0.35';
       videoRemoto.style.filter = 'grayscale(60%)';
-      log('⚠️ WebRTC ' + cs);
+      log('⚠️ WebRTC disconnected');
+    } else if (cs === 'failed' && !iceRestarting) {
+      if (badge) { badge.textContent = '🔴 Senza video'; badge.style.color = '#ef4444'; badge.style.display = 'block'; }
+      videoRemoto.style.opacity = '0.35';
+      videoRemoto.style.filter = 'grayscale(60%)';
+      log('🔁 WebRTC failed — ICE restart...');
+      iceRestarting = true;
+      try {
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        socket.emit('segnale', { token, data: offer });
+        log('ICE restart offer inviato');
+        setTimeout(() => { iceRestarting = false; }, 5000);
+      } catch(e) {
+        log('ICE restart fallito: ' + e.message);
+        iceRestarting = false;
+      }
     } else if (cs === 'connected') {
       videoRemoto.style.opacity = '1';
       videoRemoto.style.filter = '';
+      if (badge) badge.style.display = 'block';
+      iceRestarting = false;
     }
   };
 
