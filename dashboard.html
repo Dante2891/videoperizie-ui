@@ -490,6 +490,15 @@ function aggiornaStat() {
   document.getElementById('stat-in-corso').textContent = tuttePerizie.filter(p => p.stato === 'in_corso').length;
 }
 
+function esc(s) {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 function renderPerizie(perizie) {
   const tbody = document.getElementById('perizie-body');
   if (perizie.length === 0) {
@@ -502,9 +511,9 @@ function renderPerizie(perizie) {
     const waLink = `https://wa.me/${tel.startsWith('+') ? tel.slice(1) : '39' + tel}?text=${encodeURIComponent(`Gentile ${p.nome_cliente}, la contatto per avviare la videoperizia. Clicchi sul link: ${window.location.origin}/videoperizie/cliente.html?token=${p.token_sessione}`)}`;
     return `
     <tr>
-      <td><strong>${p.nome_cliente} ${p.cognome_cliente}</strong><br><span style="color:var(--muted);font-size:0.78rem">${p.telefono_cliente}</span></td>
-      <td>${p.riferimento || '—'}</td>
-      <td style="color:var(--muted)">${p.op_nome} ${p.op_cognome}</td>
+      <td><strong>${esc(p.nome_cliente)} ${esc(p.cognome_cliente)}</strong><br><span style="color:var(--muted);font-size:0.78rem">${esc(p.telefono_cliente)}</span></td>
+      <td>${esc(p.riferimento) || '—'}</td>
+      <td style="color:var(--muted)">${esc(p.op_nome)} ${esc(p.op_cognome)}</td>
       <td style="color:var(--muted);font-size:0.82rem">${data}</td>
       <td><span class="stato-badge stato-${p.stato}">${p.stato.replace('_',' ')}</span></td>
       <td style="display:flex;gap:6px;align-items:center">
@@ -625,7 +634,7 @@ async function caricaTeam() {
   }
   tbody.innerHTML = operatori.map(op => `
     <tr>
-      <td><strong>${op.nome} ${op.cognome}</strong></td>
+      <td><strong>${esc(op.nome)} ${esc(op.cognome)}</strong></td>
       <td><span class="stato-badge" style="background:rgba(59,130,246,0.1);color:var(--accent2)">${op.ruolo}</span></td>
       <td><span class="stato-badge ${op.attivo ? 'stato-completata' : 'stato-creata'}">${op.attivo ? 'Attivo' : 'Disattivo'}</span></td>
       <td>
